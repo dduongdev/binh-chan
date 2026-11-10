@@ -42,9 +42,7 @@
   function passageSegments(content, support, keys) {
     const text = content || '';
     const sup = validRange(support, text) ? support : null;
-    const keyRanges = mergeRanges((keys || []).filter(function (r) {
-      return validRange(r, text) && (!sup || containedIn(r, sup));
-    }));
+    const keyRanges = mergeRanges((keys || []).filter(function (r) { return validRange(r, text); }));
 
     const cuts = [0, text.length];
     if (sup) cuts.push(sup.startOffset, sup.endOffset);
@@ -112,14 +110,9 @@
       if (!q.correctOptionId || !filled.some(function (o) { return o.id === q.correctOptionId; })) {
         problems.push('Question ' + n + ' needs exactly one correct answer.');
       }
-      const support = q.supportingPassage;
-      const supportOk = validRange(support, content);
-      if (!supportOk) problems.push('Question ' + n + ' needs a supporting passage.');
-      const keys = (q.keyEvidence || []).filter(function (r) {
-        return validRange(r, content) && (!supportOk || containedIn(r, support));
-      });
+      const keys = (q.keyEvidence || []).filter(function (r) { return validRange(r, content); });
       if (keys.length < 1) {
-        problems.push('Question ' + n + ' needs at least one key evidence highlight inside the supporting passage.');
+        problems.push('Question ' + n + ' needs at least one key evidence highlight.');
       }
     });
     return { ready: problems.length === 0, problems: problems };

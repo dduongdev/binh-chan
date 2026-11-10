@@ -39,11 +39,18 @@ test('passageSegments: key beats support, contiguous slices rebuild the content 
   ]);
   assert.strictEqual(segs.map(function (s) { return content.slice(s.startOffset, s.endOffset); }).join(''), content);
 
-  // Key evidence outside the supporting passage is ignored.
+  // Key evidence outside the supporting passage is drawn anyway.
   const outside = Logic.passageSegments(content, { startOffset: 6, endOffset: 11 }, [{ startOffset: 0, endOffset: 5 }]);
   assert.deepStrictEqual(outside, [
-    { startOffset: 0, endOffset: 6, level: 'text' },
+    { startOffset: 0, endOffset: 5, level: 'key' },
+    { startOffset: 5, endOffset: 6, level: 'text' },
     { startOffset: 6, endOffset: 11, level: 'support' }
+  ]);
+
+  // No supporting passage at all: key evidence still renders.
+  assert.deepStrictEqual(Logic.passageSegments(content, null, [{ startOffset: 0, endOffset: 5 }]), [
+    { startOffset: 0, endOffset: 5, level: 'key' },
+    { startOffset: 5, endOffset: 11, level: 'text' }
   ]);
 
   // Invalid support → plain text.
@@ -51,23 +58,27 @@ test('passageSegments: key beats support, contiguous slices rebuild the content 
     [{ startOffset: 0, endOffset: 3, level: 'text' }]);
 });
 
-test('validatePassage: ready only with support + key evidence inside it', function () {
+test('validatePassage: ready with key evidence anywhere, supporting passage optional', function () {
   const base = {
     title: 'T', content: 'Hello world',
     questions: [{ prompt: 'Q', correctOptionId: 'a',
       options: [{ id: 'a', text: 'x' }, { id: 'b', text: 'y' }],
-      supportingPassage: { startOffset: 0, endOffset: 11 },
+      supportingPassage: null,
       keyEvidence: [{ startOffset: 0, endOffset: 5 }] }]
   };
   assert.strictEqual(Logic.validatePassage(base).ready, true);
+
+  const withSupport = JSON.parse(JSON.stringify(base));
+  withSupport.questions[0].supportingPassage = { startOffset: 6, endOffset: 11 };
+  assert.strictEqual(Logic.validatePassage(withSupport).ready, true);
 
   const noKey = JSON.parse(JSON.stringify(base));
   noKey.questions[0].keyEvidence = [];
   assert.strictEqual(Logic.validatePassage(noKey).ready, false);
 
-  const keyOutside = JSON.parse(JSON.stringify(base));
-  keyOutside.questions[0].supportingPassage = { startOffset: 6, endOffset: 11 };
-  assert.strictEqual(Logic.validatePassage(keyOutside).ready, false);
+  const keyOutsideText = JSON.parse(JSON.stringify(base));
+  keyOutsideText.questions[0].keyEvidence = [{ startOffset: 0, endOffset: 99 }];
+  assert.strictEqual(Logic.validatePassage(keyOutsideText).ready, false);
 });
 
 test('pickIndex: uniform range and -1 when empty', function () {
