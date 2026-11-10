@@ -5,3 +5,6 @@
 opencode.json
 .opencode/node_modules/
 .superpowers/
+__pycache__/
+*.pyc
+.opencode/skills/impeccable/scripts/bin/
