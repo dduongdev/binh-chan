@@ -49,7 +49,7 @@
     return names;
   }
 
-  // Tên trùng nhau hiển thị kèm (2), (3)... khi quay (SPN-07).
+  // Tên trùng nhau hiển thị kèm (1), (2)... khi quay (SPN-07).
   function disambiguate(names) {
     const total = {};
     const seen = {};
