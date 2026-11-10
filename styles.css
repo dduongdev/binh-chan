@@ -377,7 +377,6 @@ input:focus, textarea:focus {
   gap: 8px;
   margin: 10px 0 16px;
 }
-.evidence-tools .warn { flex-basis: 100%; }
 .editor-head-left { display: flex; align-items: center; gap: 14px; }
 .lib-search { margin-bottom: 18px; max-width: 420px; }
 .empty-title { margin: 0 0 6px; font-weight: 700; color: var(--ink-2); }

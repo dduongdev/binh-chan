@@ -273,7 +273,8 @@
     const p1 = document.createElement('p');
     const supportOk = !!q.supportingPassage;
     p1.className = supportOk ? 'yes' : '';
-    p1.textContent = (supportOk ? '\u2713 ' : '') + 'Supporting Passage' + (supportOk ? ' selected' : ' not set');
+    p1.textContent = (supportOk ? '\u2713 ' : '') + 'Supporting Passage'
+      + (supportOk ? ' selected' : ' not set (optional)');
     const p2 = document.createElement('p');
     const n = (q.keyEvidence || []).length;
     p2.className = n > 0 ? 'yes' : '';
@@ -358,18 +359,6 @@
     });
   }
 
-  function showError(message) {
-    const box = el('ed-error');
-    box.textContent = message;
-    box.hidden = false;
-  }
-
-  function clearError() {
-    const box = el('ed-error');
-    box.textContent = '';
-    box.hidden = true;
-  }
-
   function renderPreview() {
     if (!editing) return;
     const q = currentQuestion();
@@ -379,7 +368,6 @@
       q ? q.supportingPassage : null,
       q ? q.keyEvidence : []
     );
-    clearError();
     updateEvidenceButtons();
   }
 
@@ -399,19 +387,13 @@
     return { startOffset: start, endOffset: end };
   }
 
-  // Trạng thái nút dẫn chứng theo vùng chọn hiện tại (EVD-05, EVD-06).
+  // Trạng thái nút dẫn chứng theo vùng chọn hiện tại: cả hai chỉ cần một vùng bôi đen.
   function updateEvidenceButtons() {
     if (!editing || editing.mode !== 'mark' || el('view-editor').hidden) return;
     const q = currentQuestion();
     const off = selectionOffsets();
     el('btn-set-support').disabled = !q || !off;
-    const sup = q && q.supportingPassage;
-    el('btn-key-evidence').disabled = !sup || !off || !Logic.containedIn(off, sup);
-    if (off && sup && !Logic.containedIn(off, sup)) {
-      showError('Select a phrase inside the Supporting Passage.');
-    } else if (off) {
-      clearError();
-    }
+    el('btn-key-evidence').disabled = !q || !off;
   }
 
   function setSupportingPassage() {
@@ -421,10 +403,6 @@
     if (q.supportingPassage
       && q.supportingPassage.startOffset === off.startOffset
       && q.supportingPassage.endOffset === off.endOffset) return;
-    if (q.supportingPassage) {
-      if (!confirm('Changing the Supporting Passage will remove its Key Evidence highlights. Continue?')) return;
-      q.keyEvidence = [];
-    }
     q.supportingPassage = off;
     window.getSelection().removeAllRanges();
     markDirty();
@@ -437,14 +415,8 @@
     const q = currentQuestion();
     const off = selectionOffsets();
     if (!q || !off || editing.mode !== 'mark') return;
-    if (!q.supportingPassage) { showError('Select a phrase inside the Supporting Passage.'); return; }
-    if (!Logic.containedIn(off, q.supportingPassage)) {
-      showError('Select a phrase inside the Supporting Passage.');
-      return;
-    }
     q.keyEvidence = Logic.mergeRanges(q.keyEvidence.concat([off]));
     window.getSelection().removeAllRanges();
-    clearError();
     markDirty();
     renderPreview();
     renderEvidenceStatus();
@@ -466,9 +438,8 @@
   function clearSupport() {
     const q = currentQuestion();
     if (!q || !q.supportingPassage) return;
-    if (!confirm('Clear the Supporting Passage and its Key Evidence?')) return;
+    if (!confirm('Clear the Supporting Passage?')) return;
     q.supportingPassage = null;
-    q.keyEvidence = [];
     markDirty();
     renderPreview();
     renderEvidenceStatus();
