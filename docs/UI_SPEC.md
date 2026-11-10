@@ -217,7 +217,7 @@ Allow the teacher to find a reading and either edit it or begin teaching immedia
 
 ### Goal
 
-Allow the teacher to enter an **entire reading passage** and configure every question and its **two nested evidence levels** without moving between unrelated screens.
+Allow the teacher to enter an **entire reading passage** and configure every question and its evidence — **Key Evidence** (required) plus an optional **Supporting Passage** — without moving between unrelated screens.
 
 ### Layout
 
@@ -275,29 +275,29 @@ A two-column workspace on desktop:
 
 This is the most important Editor interaction.
 
-**Step 1 — Select the Supporting Passage**
+**Step 1 — Optionally select the Supporting Passage**
 
 1. Make a question active.
 2. In the left passage panel, drag to select a sentence or excerpt from the original text.
-3. Show a tiny, anchored contextual toolbar beside the selection: **Set Supporting Passage**.
+3. Use **Set Supporting Passage** from the evidence actions under the current question.
 4. On click, shade that excerpt with **pale yellow** `--color-support`.
-5. Under the current question, show a discreet indicator: **Supporting Passage selected**, plus **Change** / **Clear** actions.
+5. Under the current question, show a discreet indicator: **Supporting Passage selected**, or **Supporting Passage not set (optional)**.
 
-**Step 2 — Highlight Key Evidence inside it**
+**Step 2 — Highlight Key Evidence anywhere**
 
-1. Select one or more important words or phrases **within the Supporting Passage**.
-2. Show a tiny contextual action: **Highlight Key Evidence**.
-3. On click, emphasize that text inside the pale yellow excerpt with a **stronger orange background and bold foreground text**.
+1. Select one or more important words or phrases **anywhere in the passage** — inside or outside the Supporting Passage, or with no Supporting Passage at all.
+2. Use **Highlight Key Evidence** from the same evidence actions.
+3. On click, emphasize that text with a **stronger orange background and bold foreground text**; inside the pale yellow excerpt it sits on top of that background.
 4. The question editor shows **1 Key Evidence highlight**, **2 Key Evidence highlights**, etc.
 5. Clicking a key highlight (or its compact list entry) offers **Remove Highlight**.
 
 **Behavioral safeguards**
 
-- A teacher cannot highlight Key Evidence until a Supporting Passage is defined.
-- Key Evidence cannot extend outside the Supporting Passage.
-- When the active question changes, both levels of visible evidence update to match that question only.
+- Key Evidence may be set anywhere in the passage; the Supporting Passage is optional.
+- The Supporting Passage remains a single contiguous range and never blocks Key Evidence.
+- When the active question changes, all visible evidence updates to match that question only.
 - A phrase used for Question 1 can be reused by Question 2 without any conflict.
-- Changing the Supporting Passage clears the old Key Evidence after confirmation.
+- Changing or clearing the Supporting Passage leaves Key Evidence untouched.
 - No color picker, annotation-management screen, secondary quote textarea, or offset fields.
 - Highlight colors are fixed by role; evidence is not selected via confusing menu categories.
 
@@ -515,7 +515,7 @@ A restrained celebratory color accent is appropriate; the screen should stay cal
 | `ReadingCard` | Ready/draft, title, passage preview, question count, primary teaching action. |
 | `ReadingTextEditor` | Whole passage text entry; preserves line breaks; clear edit state. |
 | `ReadingEvidenceViewer` | Displays full passage and current question's two-tier range highlights; supports direct text selection in editor mode. |
-| `EvidenceContextToolbar` | Contextual **Set Supporting Passage** or **Highlight Key Evidence** action based on the current mode and selection. |
+| `EvidenceActions` | Fixed **Set Supporting Passage** / **Highlight Key Evidence** actions under the active question; enabled when a passage selection exists. |
 | `QuestionTabs` | Ordered question chips, active state, add and accessible reorder actions. |
 | `QuestionForm` | Prompt, variable answer options, one correct radio, evidence status. |
 | `StudentNamesInput` | Multiline paste, live valid-name count, simple errors. |
@@ -668,7 +668,7 @@ Use these exact or closely equivalent English strings consistently. Do not intro
 | Confirm delete | `Delete Reading` |
 | Reading deletion warning | `Delete this reading? This action cannot be undone.` |
 | Passage invalidation warning | `Editing this passage will clear the existing evidence highlights. Continue?` |
-| Invalid key selection | `Select a phrase inside the Supporting Passage.` |
+| Supporting status unset | `Supporting Passage not set (optional)` |
 | No students error | `Add at least one student to start.` |
 | Incomplete reading reason | `Finish the questions, answers, and evidence before teaching.` |
 | Unsaved lesson warning | `You have unsaved changes.` |
@@ -750,7 +750,7 @@ For a coding agent or frontend team:
 - [ ] All on-screen copy is English.
 - [ ] Library cards clearly prioritize **Start Teaching** and **Create Reading**.
 - [ ] The editor has one place for the entire reading passage, with no duplicated quote fields.
-- [ ] The current question's Supporting Passage is pale yellow and Key Evidence inside it is visibly stronger.
+- [ ] The current question's Key Evidence is visibly strong, and a Supporting Passage (when set) is pale yellow beneath it.
 - [ ] Switching questions changes the evidence shown in the editor.
 - [ ] Dynamic answer options and the correct-answer radio remain easy to scan.
 - [ ] The student wheel is fun, readable, and clearly identifies its selected student.

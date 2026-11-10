@@ -22,18 +22,18 @@ Có code nhưng **chưa có commit** (mọi file còn untracked):
 - `index.html` + `styles.css` — khung UI tĩnh.
 - `src/app.js` — điều khiển màn hình, `localStorage`, quay vòng (vanilla JS).
 - `src/logic.js` — logic thuần (không DOM), có test ở `tests/logic.test.js`.
-- ⚠️ Code hiện tại theo **mô hình cũ** (`SCR-01..03`, dẫn chứng một cấp `highlights`, tự loại học sinh khi công bố đáp án) — **chưa** khớp SPEC v2.0. Khi thêm/sửa tính năng, đưa về đúng SPEC: dẫn chứng 2 cấp (`supportingPassage` + `keyEvidence[]`), khu vực `LIB/EDT/SET/TCH`, cơ chế **Keep/Remove**.
+- Code đã theo **SPEC v2.1**: dẫn chứng 2 cấp (`supportingPassage` tuỳ chọn + `keyEvidence[]` đặt bất kỳ đâu), khu vực `LIB/EDT/SET/TCH`, cơ chế **Keep/Remove**. (Mô hình cũ `SCR-01..03` với dẫn chứng một cấp `highlights` đã bị thay thế.)
 
 ## 3. Bất biến nghiệp vụ (không được vi phạm)
 
 - Mỗi câu hỏi: **≥ 2 lựa chọn** có nội dung và **đúng chính xác 1** đáp án (số lựa chọn linh hoạt, không cố định A/B/C/D).
-- Dẫn chứng có **2 cấp**, gắn **theo từng câu hỏi**: **Supporting Passage** (1 vùng liền mạch, nền nhạt — cấp 1) và **Key Evidence** (≥ 0 vùng nằm **hoàn toàn trong** Supporting Passage, đậm/bold hơn — cấp 2). Khi sửa/duyệt câu X chỉ hiện dẫn chứng của X, không lộ của câu khác (EVD-01..13).
+- Dẫn chứng gắn **theo từng câu hỏi** với **2 cấp hiển thị**: **Key Evidence** (≥ 1 vùng để Ready, đặt **bất kỳ đâu** trong bài đọc, đậm/bold hơn — cấp 2) và **Supporting Passage** (**tuỳ chọn**, tối đa 1 vùng liền mạch, nền nhạt — cấp 1). Đổi/clear Supporting Passage **không** xoá Key Evidence. Khi sửa/duyệt câu X chỉ hiện dẫn chứng của X, không lộ của câu khác (EVD-01..13).
 - Chưa nhấn **Reveal Answer** thì không được lộ đáp án đúng hay **bất kỳ dẫn chứng nào** (TCH-04, EVD-13).
 - Sang câu mới: reset `selectedStudent = null`, `answerRevealed = false`, phase về `spin` (SPEC §7, TCH-07).
 - Vòng quay chọn **đều xác suất** từ danh sách **đang active**; **KHÔNG** tự loại học sinh sau khi quay (không auto no-repeat). Chỉ **Remove** mới loại khỏi các vòng sau **trong phiên**; **Keep** giữ lại; **Spin Again** không đổi roster (SPN-01..09). Hết học sinh active → disable Spin + `Restore All Students` (SPN-10, SPN-11).
 - Offset dẫn chứng dùng **nửa mở** `[startOffset, endOffset)`, `0 <= startOffset < endOffset <= content.length`, theo chỉ số **UTF-16** của `content` canonical; suy ra từ vùng bôi đen DOM, **không** dùng `indexOf` (cụm từ có thể lặp lại nhiều lần).
 - Sửa nội dung bài đọc khi đã có dẫn chứng → cảnh báo rõ; nếu xác nhận thì xóa **toàn bộ** dẫn chứng của **mọi câu**, không tự căn chỉnh offset (SPEC §6.5).
-- Chỉ cho **Start Teaching** khi bài đọc hợp lệ (đủ 9 điều kiện SPEC §5); bài thiếu vẫn lưu nháp được.
+- Chỉ cho **Start Teaching** khi bài đọc hợp lệ (đủ 8 điều kiện SPEC §5); bài thiếu vẫn lưu nháp được.
 - Mọi nội dung giáo viên nhập hiển thị dạng **text**, không thực thi HTML/script.
 
 ## 4. Skill dùng trong dự án này
