@@ -360,15 +360,22 @@ input:focus, textarea:focus {
 
 .q-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* ---------------- Evidence tools (passage panel) ---------------- */
+/* ---------------- Evidence status + actions (questions panel) ---------------- */
+
+.evidence-head {
+  margin: 0 0 8px;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 
 .evidence-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  margin: 10px 0 16px;
 }
 .evidence-tools .warn { flex-basis: 100%; }
 .editor-head-left { display: flex; align-items: center; gap: 14px; }

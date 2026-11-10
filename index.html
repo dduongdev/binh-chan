@@ -61,20 +61,12 @@
           </div>
 
           <p id="ed-hint" class="hint panel-note">
-            Select text in the passage, then set the Supporting Passage and highlight Key Evidence.
+            Select text in this passage, then use the evidence actions under the active question.
           </p>
 
           <textarea id="ed-content" rows="14" placeholder="Paste or type the full reading passage..."></textarea>
 
           <div id="passage-preview" class="passage passage-edit" hidden></div>
-
-          <div id="evidence-tools" class="evidence-tools" hidden>
-            <button id="btn-set-support" class="small" type="button" disabled>Set Supporting Passage</button>
-            <button id="btn-key-evidence" class="small" type="button" disabled>Highlight Key Evidence</button>
-            <button id="btn-clear-support" class="small ghost" type="button" disabled>Clear Supporting Passage</button>
-            <button id="btn-clear-keys" class="small ghost" type="button" disabled>Clear Key Evidence</button>
-            <p id="ed-error" class="warn" hidden></p>
-          </div>
         </div>
 
         <div class="panel">
@@ -97,7 +89,16 @@
               <button id="btn-add-option" class="small ghost" type="button">Add Option</button>
             </div>
 
+            <h4 class="evidence-head">Evidence</h4>
             <div id="q-evidence" class="q-evidence"></div>
+
+            <div id="evidence-tools" class="evidence-tools" hidden>
+              <button id="btn-set-support" class="small" type="button" disabled>Set Supporting Passage</button>
+              <button id="btn-key-evidence" class="small" type="button" disabled>Highlight Key Evidence</button>
+              <button id="btn-clear-support" class="small ghost" type="button" disabled>Clear Supporting Passage</button>
+              <button id="btn-clear-keys" class="small ghost" type="button" disabled>Clear Key Evidence</button>
+              <p id="ed-error" class="warn" hidden></p>
+            </div>
 
             <div class="q-actions">
               <button id="btn-move-up" class="small ghost" type="button">Move Up</button>
