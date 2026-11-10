@@ -4,12 +4,12 @@
   'use strict';
 
   const Logic = window.Logic;
-  const STORAGE_KEY = 'readingflow.readings.v1';
+  const STORAGE_KEY = 'readingflow.readings.v2';
 
   const el = function (id) { return document.getElementById(id); };
 
   let readings = [];
-  // { reading, questionIndex, mode: 'edit'|'mark', dirty, baselineContent }
+  // { reading, questionIndex, mode: 'edit'|'mark', dirty, baselinePassage }
   let editing = null;
   // { reading, names, labels, state, spinning, spinToken }
   let session = null;
@@ -43,16 +43,15 @@
 
   function newQuestion() {
     return {
-      id: Logic.newId(), order: 0, prompt: '',
+      id: Logic.newId(), order: 0, prompt: '', passage: '',
       options: [newOption(), newOption()],
       correctOptionId: null,
-      supportingPassage: null,
       keyEvidence: []
     };
   }
 
   function newReading() {
-    return { id: Logic.newId(), title: '', content: '', questions: [], createdAt: Date.now(), updatedAt: Date.now() };
+    return { id: Logic.newId(), title: '', questions: [], createdAt: Date.now(), updatedAt: Date.now() };
   }
 
   // Giữ order == vị trí mảng (SPEC §6.1).
@@ -120,7 +119,12 @@
       meta.appendChild(document.createTextNode(' · ' + new Date(r.updatedAt || r.createdAt || Date.now()).toLocaleDateString('en-US')));
       const v = readyBadge(r);
       meta.appendChild(v.badge);
-      info.append(title, meta);
+      const first = (r.questions || [])[0];
+      const preview = document.createElement('p');
+      preview.className = 'p-preview';
+      preview.textContent = first && first.passage && first.passage.trim()
+        ? first.passage : 'No excerpt yet.';
+      info.append(title, preview, meta);
 
       const actions = document.createElement('div');
       actions.className = 'p-actions';
@@ -152,7 +156,7 @@
       questionIndex: reading.questions.length ? 0 : -1,
       mode: 'edit',
       dirty: false,
-      baselineContent: reading.content || ''
+      baselinePassage: reading.questions.length ? (reading.questions[0].passage || '') : ''
     };
     el('ed-status').textContent = '';
     renderEditor();
@@ -162,14 +166,20 @@
 
   function renderEditor() {
     const r = editing.reading;
+    const q = currentQuestion();
     el('ed-title').value = r.title || '';
-    el('ed-content').value = r.content || '';
+    el('ed-content').value = q ? (q.passage || '') : '';
+    el('ed-content').disabled = !q;
+    el('ed-excerpt-for').textContent = q ? '\u00b7 Question ' + (editing.questionIndex + 1) : '';
+    el('ed-empty').hidden = !!q;
 
-    const marking = editing.mode === 'mark';
-    el('ed-content').hidden = marking;
+    const marking = editing.mode === 'mark' && !!q;
+    el('ed-content').hidden = marking || !q;
     el('passage-preview').hidden = !marking;
     el('evidence-tools').hidden = !marking;
     el('ed-hint').hidden = !marking;
+    el('btn-mode-edit').disabled = !q;
+    el('btn-mode-mark').disabled = !q;
     el('btn-mode-edit').className = marking ? 'small ghost' : 'small';
     el('btn-mode-mark').className = marking ? 'small' : 'small ghost';
 
@@ -195,10 +205,10 @@
 
   function selectQuestion(i) {
     if (editing.questionIndex === i) return;
+    if (!reconcileExcerpt()) return;
     editing.questionIndex = i;
-    renderQuestionTabs();
-    renderQuestionForm();
-    renderPreview();
+    editing.baselinePassage = currentQuestion() ? (currentQuestion().passage || '') : '';
+    renderEditor();
   }
 
   function renderQuestionForm() {
@@ -261,29 +271,23 @@
     return row;
   }
 
-  // Nhãn trạng thái dẫn chứng của câu đang chọn (nội dung chi tiết do Task 4 lo).
+  // Nhãn trạng thái dẫn chứng của câu đang chọn.
   function renderEvidenceStatus() {
     const q = currentQuestion();
     const box = el('q-evidence');
     box.textContent = '';
     if (!q) {
-      box.textContent = 'Add a question to attach evidence.';
-      el('btn-clear-support').disabled = true;
+      box.textContent = 'Add a question to write an excerpt and mark evidence.';
       el('btn-clear-keys').disabled = true;
+      el('btn-key-evidence').disabled = true;
       return;
     }
-    const p1 = document.createElement('p');
-    const supportOk = !!q.supportingPassage;
-    p1.className = supportOk ? 'yes' : '';
-    p1.textContent = (supportOk ? '\u2713 ' : '') + 'Supporting Passage'
-      + (supportOk ? ' selected' : ' not set (optional)');
-    const p2 = document.createElement('p');
+    const p = document.createElement('p');
     const n = (q.keyEvidence || []).length;
-    p2.className = n > 0 ? 'yes' : '';
-    p2.textContent = (n > 0 ? '\u2713 ' : '') + n + ' Key Evidence highlight' + (n === 1 ? '' : 's');
-    box.append(p1, p2);
+    p.className = n > 0 ? 'yes' : '';
+    p.textContent = (n > 0 ? '\u2713 ' : '') + n + ' Key Evidence highlight' + (n === 1 ? '' : 's');
+    box.appendChild(p);
 
-    el('btn-clear-support').disabled = !supportOk;
     el('btn-clear-keys').disabled = n === 0;
     updateEvidenceButtons();
   }
@@ -294,13 +298,14 @@
   }
 
   function addQuestion() {
+    if (!reconcileExcerpt()) return;
     editing.reading.questions.push(newQuestion());
     editing.questionIndex = editing.reading.questions.length - 1;
+    editing.mode = 'edit';
+    editing.baselinePassage = '';
     markDirty();
-    renderQuestionTabs();
-    renderQuestionForm();
-    renderPreview();
-    updateValidity();
+    renderEditor();
+    el('ed-content').focus();
   }
 
   function deleteQuestion() {
@@ -309,11 +314,10 @@
     if (editing.questionIndex >= editing.reading.questions.length) {
       editing.questionIndex = editing.reading.questions.length - 1;
     }
+    const q = currentQuestion();
+    editing.baselinePassage = q ? (q.passage || '') : '';
     markDirty();
-    renderQuestionTabs();
-    renderQuestionForm();
-    renderPreview();
-    updateValidity();
+    renderEditor();
   }
 
   function moveQuestion(delta) {
@@ -324,38 +328,32 @@
     const tmp = qs[i]; qs[i] = qs[j]; qs[j] = tmp;
     editing.questionIndex = j;
     markDirty();
-    renderQuestionTabs();
-    renderQuestionForm();
-    updateValidity();
+    renderEditor();
   }
 
   /* ---------------- EVD: dẫn chứng 2 cấp (SPEC §6.4, EVD-01..13) ---------------- */
 
   // Dựng nội dung bằng text node + mark (không innerHTML) → an toàn XSS và
-  // container.textContent luôn bằng content (offset phụ thuộc điều này).
-  function renderPassage(container, content, support, keys) {
+  // container.textContent luôn bằng text (offset phụ thuộc điều này).
+  function renderPassage(container, text, keys) {
     container.textContent = '';
-    const text = content || '';
-    Logic.passageSegments(text, support, keys).forEach(function (seg) {
-      const piece = text.slice(seg.startOffset, seg.endOffset);
+    const body = text || '';
+    Logic.passageSegments(body, keys).forEach(function (seg) {
+      const piece = body.slice(seg.startOffset, seg.endOffset);
       if (seg.level === 'text') {
         container.appendChild(document.createTextNode(piece));
         return;
       }
       const mark = document.createElement('mark');
       mark.textContent = piece;
-      if (seg.level === 'key') {
-        mark.className = 'mark-key';
-        mark.dataset.start = seg.startOffset;
-        mark.dataset.end = seg.endOffset;
-        mark.title = 'Remove Highlight';
-        if (container.id === 'passage-preview') {
-          mark.tabIndex = 0;
-          mark.setAttribute('role', 'button');
-          mark.setAttribute('aria-label', 'Remove Highlight');
-        }
-      } else {
-        mark.className = 'mark-support';
+      mark.className = 'mark-key';
+      mark.dataset.start = seg.startOffset;
+      mark.dataset.end = seg.endOffset;
+      mark.title = 'Remove Highlight';
+      if (container.id === 'passage-preview') {
+        mark.tabIndex = 0;
+        mark.setAttribute('role', 'button');
+        mark.setAttribute('aria-label', 'Remove Highlight');
       }
       container.appendChild(mark);
     });
@@ -366,9 +364,8 @@
     const q = currentQuestion();
     renderPassage(
       el('passage-preview'),
-      editing.reading.content || '',
-      q ? q.supportingPassage : null,
-      q ? q.keyEvidence : []
+      q ? (q.passage || '') : '',
+      q ? (q.keyEvidence || []) : []
     );
     updateEvidenceButtons();
   }
@@ -389,28 +386,12 @@
     return { startOffset: start, endOffset: end };
   }
 
-  // Trạng thái nút dẫn chứng theo vùng chọn hiện tại: cả hai chỉ cần một vùng bôi đen.
+  // Trạng thái nút Key Evidence theo vùng chọn hiện tại.
   function updateEvidenceButtons() {
     if (!editing || editing.mode !== 'mark' || el('view-editor').hidden) return;
     const q = currentQuestion();
     const off = selectionOffsets();
-    el('btn-set-support').disabled = !q || !off;
     el('btn-key-evidence').disabled = !q || !off;
-  }
-
-  function setSupportingPassage() {
-    const q = currentQuestion();
-    const off = selectionOffsets();
-    if (!q || !off || editing.mode !== 'mark') return;
-    if (q.supportingPassage
-      && q.supportingPassage.startOffset === off.startOffset
-      && q.supportingPassage.endOffset === off.endOffset) return;
-    q.supportingPassage = off;
-    window.getSelection().removeAllRanges();
-    markDirty();
-    renderPreview();
-    renderEvidenceStatus();
-    updateValidity();
   }
 
   function addKeyEvidence() {
@@ -428,22 +409,9 @@
   function removeKeyEvidence(start, end) {
     const q = currentQuestion();
     if (!q) return;
-    // Một vùng key có thể bị cắt thành nhiều mark khi vượt biên Supporting Passage,
-    // nên xoá theo chứa đựng (các vùng đã gộp nên không chồng lấn).
     q.keyEvidence = (q.keyEvidence || []).filter(function (r) {
       return !(r.startOffset <= start && r.endOffset >= end);
     });
-    markDirty();
-    renderPreview();
-    renderEvidenceStatus();
-    updateValidity();
-  }
-
-  function clearSupport() {
-    const q = currentQuestion();
-    if (!q || !q.supportingPassage) return;
-    if (!confirm('Clear the Supporting Passage?')) return;
-    q.supportingPassage = null;
     markDirty();
     renderPreview();
     renderEvidenceStatus();
@@ -490,41 +458,38 @@
     teach.title = v.ready ? '' : v.problems.join(' ');
   }
 
-  // SPEC §6.5: sửa nội dung khi đã có dẫn chứng → cảnh báo rồi xóa toàn bộ dẫn chứng.
-  function reconcileContent() {
+  // SPEC §6.5: sửa excerpt khi đã có dẫn chứng → cảnh báo rồi xóa dẫn chứng của riêng câu đó.
+  function reconcileExcerpt() {
     if (!editing) return true;
-    const r = editing.reading;
-    if ((r.content || '') === editing.baselineContent) return true;
-    const hasEvidence = r.questions.some(function (q) {
-      return !!q.supportingPassage || (q.keyEvidence || []).length > 0;
-    });
-    if (hasEvidence && !confirm('Editing this passage will clear the existing evidence highlights. Continue?')) {
-      r.content = editing.baselineContent;
-      el('ed-content').value = editing.baselineContent;
-      renderPreview();
+    const q = currentQuestion();
+    if (!q || (q.passage || '') === editing.baselinePassage) return true;
+    if ((q.keyEvidence || []).length
+      && !confirm('Editing this excerpt will clear its evidence highlights. Continue?')) {
+      q.passage = editing.baselinePassage;
+      el('ed-content').value = editing.baselinePassage;
+      updateValidity();
       return false;
     }
-    if (hasEvidence) {
-      r.questions.forEach(function (q) { q.supportingPassage = null; q.keyEvidence = []; });
-    }
-    editing.baselineContent = r.content || '';
+    q.keyEvidence = [];
+    editing.baselinePassage = q.passage || '';
     markDirty();
     renderPreview();
-    renderQuestionForm();
+    renderEvidenceStatus();
     updateValidity();
     return true;
   }
 
   function setMode(mode) {
     if (!editing || editing.mode === mode) return;
-    if (mode === 'mark' && !reconcileContent()) return;
+    if (!currentQuestion()) return;
+    if (mode === 'mark' && !reconcileExcerpt()) return;
     editing.mode = mode;
     renderEditor();
   }
 
   function saveEditor() {
     if (!editing) return false;
-    if (!reconcileContent()) return false;
+    if (!reconcileExcerpt()) return false;
     const r = editing.reading;
     syncOrders(r);
     r.updatedAt = Date.now();
@@ -742,8 +707,7 @@
     const s = session.state;
     const q = session.reading.questions[s.questionIndex];
     el('teach-student').textContent = labelFor(s.selectedStudentId) + ' is answering';
-    renderPassage(el('teach-passage'), session.reading.content || '',
-      revealed ? q.supportingPassage : null,
+    renderPassage(el('teach-passage'), q.passage || '',
       revealed ? q.keyEvidence : []);
 
     const box = el('teach-question');
@@ -822,14 +786,10 @@
     });
     el('btn-mode-edit').addEventListener('click', function () { setMode('edit'); });
     el('btn-mode-mark').addEventListener('click', function () { setMode('mark'); });
-    el('btn-set-support').addEventListener('click', setSupportingPassage);
     el('btn-key-evidence').addEventListener('click', addKeyEvidence);
-    el('btn-clear-support').addEventListener('click', clearSupport);
     el('btn-clear-keys').addEventListener('click', clearKeyEvidence);
     // Giữ vùng bôi đen khi bấm nút (mousedown mặc định sẽ xóa selection).
-    ['btn-set-support', 'btn-key-evidence'].forEach(function (id) {
-      el(id).addEventListener('mousedown', function (e) { e.preventDefault(); });
-    });
+    el('btn-key-evidence').addEventListener('mousedown', function (e) { e.preventDefault(); });
     el('passage-preview').addEventListener('click', onPreviewClick);
     el('passage-preview').addEventListener('keydown', onPreviewKey);
     document.addEventListener('selectionchange', updateEvidenceButtons);
@@ -866,7 +826,9 @@
       updateValidity();
     });
     el('ed-content').addEventListener('input', function () {
-      editing.reading.content = el('ed-content').value;
+      const q = currentQuestion();
+      if (!q) return;
+      q.passage = el('ed-content').value;
       markDirty();
       updateValidity();
     });

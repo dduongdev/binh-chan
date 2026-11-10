@@ -27,9 +27,8 @@
   --danger: #c33f34;
   --danger-soft: #fdeeed;
 
-  /* Evidence — two levels, fixed by role (UI_SPEC §2.1) */
-  --color-support: #FFF1B8;  /* Supporting Passage, level 1 */
-  --color-key: #F7AD4A;      /* Key Evidence, level 2 */
+  /* Evidence — one level, fixed by role (UI_SPEC §2.1) */
+  --color-key: #F7AD4A;      /* Key Evidence */
   --color-key-text: #593707;
   --color-correct-bg: #DDF6E6;
   --color-correct-text: #175C38;
@@ -219,6 +218,14 @@ input:focus, textarea:focus {
   color: var(--muted);
   font-size: .85rem;
 }
+.p-preview {
+  margin: 4px 0 6px;
+  color: var(--ink-2);
+  font-size: .9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .p-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 .badge {
@@ -270,6 +277,7 @@ input:focus, textarea:focus {
 }
 .panel-head h3 { margin: 0; font-size: .95rem; font-weight: 700; }
 .toolbar { display: flex; gap: 8px; }
+.panel-sub { font-size: .82rem; font-weight: 600; color: var(--muted); margin-left: 4px; }
 
 .editor-grid {
   display: grid;
@@ -298,7 +306,6 @@ input:focus, textarea:focus {
   border-radius: 3px;
   transition: background-color .16s var(--ease), box-shadow .16s var(--ease);
 }
-.passage .mark-support { background: var(--color-support); }
 .passage .mark-key {
   background: var(--color-key);
   color: var(--color-key-text);

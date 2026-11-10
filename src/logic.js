@@ -37,15 +37,13 @@
     return out;
   }
 
-  // Chia nội dung thành các đoạn liền mạch theo cấp dẫn chứng (key > support > text).
-  // Dùng để render: ghép các slice lại phải bằng đúng content (offset dựa vào đó).
-  function passageSegments(content, support, keys) {
-    const text = content || '';
-    const sup = validRange(support, text) ? support : null;
-    const keyRanges = mergeRanges((keys || []).filter(function (r) { return validRange(r, text); }));
+  // Chia nội dung thành các đoạn liền mạch theo cấp dẫn chứng (key > text).
+  // Dùng để render: ghép các slice lại phải bằng đúng text (offset dựa vào đó).
+  function passageSegments(text, keys) {
+    const body = text || '';
+    const keyRanges = mergeRanges((keys || []).filter(function (r) { return validRange(r, body); }));
 
-    const cuts = [0, text.length];
-    if (sup) cuts.push(sup.startOffset, sup.endOffset);
+    const cuts = [0, body.length];
     keyRanges.forEach(function (r) { cuts.push(r.startOffset, r.endOffset); });
     const points = cuts.filter(function (v, i, a) { return a.indexOf(v) === i; })
       .sort(function (a, b) { return a - b; });
@@ -56,8 +54,7 @@
       const b = points[i + 1];
       if (a >= b) continue;
       const inKey = keyRanges.some(function (r) { return r.startOffset <= a && b <= r.endOffset; });
-      const inSup = !!sup && sup.startOffset <= a && b <= sup.endOffset;
-      out.push({ startOffset: a, endOffset: b, level: inKey ? 'key' : (inSup ? 'support' : 'text') });
+      out.push({ startOffset: a, endOffset: b, level: inKey ? 'key' : 'text' });
     }
     return out;
   }
@@ -98,8 +95,6 @@
     const problems = [];
     if (!p) return { ready: false, problems: ['No reading data.'] };
     if (!p.title || !p.title.trim()) problems.push('Reading title is required.');
-    const content = p.content || '';
-    if (!content.trim()) problems.push('Passage text is required.');
     const questions = p.questions || [];
     if (questions.length === 0) problems.push('Add at least one question.');
     questions.forEach(function (q, i) {
@@ -110,9 +105,8 @@
       if (!q.correctOptionId || !filled.some(function (o) { return o.id === q.correctOptionId; })) {
         problems.push('Question ' + n + ' needs exactly one correct answer.');
       }
-      const keys = (q.keyEvidence || []).filter(function (r) { return validRange(r, content); });
-      if (keys.length < 1) {
-        problems.push('Question ' + n + ' needs at least one key evidence highlight.');
+      if (!q.passage || !q.passage.trim()) {
+        problems.push('Question ' + n + ' has no reading excerpt.');
       }
     });
     return { ready: problems.length === 0, problems: problems };

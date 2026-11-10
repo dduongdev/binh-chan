@@ -53,18 +53,19 @@
       <div class="editor-grid">
         <div class="panel">
           <div class="panel-head">
-            <h3>Reading Passage</h3>
+            <h3>Reading Excerpt <span id="ed-excerpt-for" class="panel-sub"></span></h3>
             <div class="toolbar">
-              <button id="btn-mode-edit" class="small" type="button">Edit Passage</button>
+              <button id="btn-mode-edit" class="small" type="button">Edit Excerpt</button>
               <button id="btn-mode-mark" class="small ghost" type="button">Mark Evidence</button>
             </div>
           </div>
 
-          <p id="ed-hint" class="hint panel-note">
-            Select text in this passage, then use the evidence actions under the active question.
+          <p id="ed-empty" class="hint panel-note" hidden>Add a question to write its excerpt.</p>
+          <p id="ed-hint" class="hint panel-note" hidden>
+            Select text in this excerpt, then use the evidence actions under the active question.
           </p>
 
-          <textarea id="ed-content" rows="14" placeholder="Paste or type the full reading passage..."></textarea>
+          <textarea id="ed-content" rows="14" placeholder="Paste or type this question's excerpt from the book..."></textarea>
 
           <div id="passage-preview" class="passage passage-edit" hidden></div>
         </div>
@@ -93,9 +94,7 @@
             <div id="q-evidence" class="q-evidence"></div>
 
             <div id="evidence-tools" class="evidence-tools" hidden>
-              <button id="btn-set-support" class="small" type="button" disabled>Set Supporting Passage</button>
               <button id="btn-key-evidence" class="small" type="button" disabled>Highlight Key Evidence</button>
-              <button id="btn-clear-support" class="small ghost" type="button" disabled>Clear Supporting Passage</button>
               <button id="btn-clear-keys" class="small ghost" type="button" disabled>Clear Key Evidence</button>
             </div>
 

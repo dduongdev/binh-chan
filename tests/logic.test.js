@@ -30,65 +30,69 @@ test('validRange: half-open bounds inside content', function () {
   assert.strictEqual(Logic.validRange({ startOffset: 0, endOffset: 5 }, 'abcd'), false);
 });
 
-test('passageSegments: key beats support, contiguous slices rebuild the content exactly', function () {
-  const content = 'Hello world';
-  const segs = Logic.passageSegments(content, { startOffset: 0, endOffset: 11 }, [{ startOffset: 0, endOffset: 5 }]);
-  assert.deepStrictEqual(segs, [
-    { startOffset: 0, endOffset: 5, level: 'key' },
-    { startOffset: 5, endOffset: 11, level: 'support' }
-  ]);
-  assert.strictEqual(segs.map(function (s) { return content.slice(s.startOffset, s.endOffset); }).join(''), content);
-
-  // Key evidence outside the supporting passage is drawn anyway.
-  const outside = Logic.passageSegments(content, { startOffset: 6, endOffset: 11 }, [{ startOffset: 0, endOffset: 5 }]);
-  assert.deepStrictEqual(outside, [
-    { startOffset: 0, endOffset: 5, level: 'key' },
-    { startOffset: 5, endOffset: 6, level: 'text' },
-    { startOffset: 6, endOffset: 11, level: 'support' }
-  ]);
-
-  // No supporting passage at all: key evidence still renders.
-  assert.deepStrictEqual(Logic.passageSegments(content, null, [{ startOffset: 0, endOffset: 5 }]), [
+test('passageSegments: one highlight level, contiguous slices rebuild the excerpt exactly', function () {
+  const text = 'Hello world';
+  assert.deepStrictEqual(Logic.passageSegments(text, [{ startOffset: 0, endOffset: 5 }]), [
     { startOffset: 0, endOffset: 5, level: 'key' },
     { startOffset: 5, endOffset: 11, level: 'text' }
   ]);
+  assert.strictEqual(
+    Logic.passageSegments(text, [{ startOffset: 0, endOffset: 5 }])
+      .map(function (s) { return text.slice(s.startOffset, s.endOffset); }).join(''),
+    text);
 
-  // A key range crossing the support boundary splits into two key slices, so a
-  // click on one slice must still remove the stored range.
-  const crossing = Logic.passageSegments(content, { startOffset: 3, endOffset: 9 }, [{ startOffset: 0, endOffset: 6 }]);
-  assert.deepStrictEqual(crossing, [
-    { startOffset: 0, endOffset: 3, level: 'key' },
-    { startOffset: 3, endOffset: 6, level: 'key' },
-    { startOffset: 6, endOffset: 9, level: 'support' },
-    { startOffset: 9, endOffset: 11, level: 'text' }
-  ]);
+  // Overlapping or adjacent highlights merge into one.
+  assert.deepStrictEqual(
+    Logic.passageSegments(text, [{ startOffset: 0, endOffset: 3 }, { startOffset: 3, endOffset: 5 }]),
+    [{ startOffset: 0, endOffset: 5, level: 'key' }, { startOffset: 5, endOffset: 11, level: 'text' }]);
 
-  // Invalid support → plain text.
-  assert.deepStrictEqual(Logic.passageSegments('abc', { startOffset: 0, endOffset: 9 }, []),
+  // Out-of-range ranges are dropped, not clamped.
+  assert.deepStrictEqual(Logic.passageSegments('abc', [{ startOffset: 0, endOffset: 9 }]),
     [{ startOffset: 0, endOffset: 3, level: 'text' }]);
+
+  // No highlights -> one text slice.
+  assert.deepStrictEqual(Logic.passageSegments('abc', []),
+    [{ startOffset: 0, endOffset: 3, level: 'text' }]);
+
+  // UTF-16: a surrogate pair is one 2-code-unit slice, never split.
+  const emoji = 'A\u{1F600}B';
+  assert.deepStrictEqual(Logic.passageSegments(emoji, [{ startOffset: 1, endOffset: 3 }]), [
+    { startOffset: 0, endOffset: 1, level: 'text' },
+    { startOffset: 1, endOffset: 3, level: 'key' },
+    { startOffset: 3, endOffset: 4, level: 'text' }
+  ]);
 });
 
-test('validatePassage: ready with key evidence anywhere, supporting passage optional', function () {
-  const base = {
-    title: 'T', content: 'Hello world',
-    questions: [{ prompt: 'Q', correctOptionId: 'a',
+test('validatePassage: excerpt required, key evidence optional', function () {
+  function question() {
+    return {
+      prompt: 'Q', passage: 'Hello world', correctOptionId: 'a',
       options: [{ id: 'a', text: 'x' }, { id: 'b', text: 'y' }],
-      supportingPassage: null,
-      keyEvidence: [{ startOffset: 0, endOffset: 5 }] }]
-  };
-  assert.strictEqual(Logic.validatePassage(base).ready, true);
+      keyEvidence: []
+    };
+  }
+  const base = { title: 'T', questions: [question()] };
+  assert.strictEqual(Logic.validatePassage(base).ready, true); // no content, no highlights
 
-  const withSupport = JSON.parse(JSON.stringify(base));
-  withSupport.questions[0].supportingPassage = { startOffset: 6, endOffset: 11 };
-  assert.strictEqual(Logic.validatePassage(withSupport).ready, true);
+  const withKey = JSON.parse(JSON.stringify(base));
+  withKey.questions[0].keyEvidence = [{ startOffset: 0, endOffset: 5 }];
+  assert.strictEqual(Logic.validatePassage(withKey).ready, true);
 
-  const noKey = JSON.parse(JSON.stringify(base));
-  noKey.questions[0].keyEvidence = [];
-  assert.strictEqual(Logic.validatePassage(noKey).ready, false);
+  const noExcerpt = JSON.parse(JSON.stringify(base));
+  noExcerpt.questions[0].passage = '   ';
+  const v = Logic.validatePassage(noExcerpt);
+  assert.strictEqual(v.ready, false);
+  assert.ok(v.problems.some(function (p) { return p.indexOf('reading excerpt') !== -1; }));
 
-  const keyOutsideText = JSON.parse(JSON.stringify(base));
-  keyOutsideText.questions[0].keyEvidence = [{ startOffset: 0, endOffset: 99 }];
-  assert.strictEqual(Logic.validatePassage(keyOutsideText).ready, false);
+  // Invalid ranges are filtered at render time and never block readiness.
+  const staleKey = JSON.parse(JSON.stringify(base));
+  staleKey.questions[0].keyEvidence = [{ startOffset: 0, endOffset: 99 }];
+  assert.strictEqual(Logic.validatePassage(staleKey).ready, true);
+
+  const noTitle = JSON.parse(JSON.stringify(base));
+  noTitle.title = '';
+  assert.strictEqual(Logic.validatePassage(noTitle).ready, false);
+  assert.strictEqual(Logic.validatePassage({ title: 'T', questions: [] }).ready, false);
 });
 
 test('pickIndex: uniform range and -1 when empty', function () {
