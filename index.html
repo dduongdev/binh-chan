@@ -3,66 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ReadingFlow — Reading lesson tools</title>
+  <title>ReadingFlow</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="app-header">
     <h1 class="brand">ReadingFlow</h1>
-    <button id="btn-fullscreen" class="ghost" type="button">Fullscreen</button>
+    <button id="btn-fullscreen" class="ghost small" type="button">Full Screen</button>
   </header>
 
   <main>
-    <!-- SCR-01: Reading library -->
+    <!-- LIB: My Readings -->
     <section id="view-library" class="view">
       <div class="view-head">
-        <h2>Reading library</h2>
-        <button id="btn-new-passage" type="button">New passage</button>
+        <h2>My Readings</h2>
+        <button id="btn-create" type="button">Create Reading</button>
       </div>
+
+      <div class="lib-search">
+        <input id="lib-search" type="search" placeholder="Search readings...">
+      </div>
+
       <ul id="passage-list" class="passage-list"></ul>
-      <p id="library-empty" class="empty">No passages yet. Create your first one to get started.</p>
+      <div id="library-empty" class="empty">
+        <p class="empty-title">No readings yet</p>
+        <p>Create your first reading to get started.</p>
+      </div>
     </section>
 
-    <!-- SCR-02: Passage editor -->
+    <!-- EDT: Reading Editor -->
     <section id="view-editor" class="view" hidden>
-      <div class="view-head">
-        <h2>Edit passage</h2>
+      <div class="view-head editor-head">
+        <div class="editor-head-left">
+          <button id="btn-editor-back" class="ghost" type="button">&larr; My Readings</button>
+          <h2>Reading Editor</h2>
+        </div>
         <div class="head-actions">
-          <button id="btn-editor-back" class="ghost" type="button">&larr; Library</button>
-          <button id="btn-editor-save" type="button">Save</button>
+          <button id="btn-editor-save" class="ghost" type="button">Save Reading</button>
+          <button id="btn-editor-teach" type="button" disabled>Start Teaching</button>
         </div>
       </div>
 
       <label class="field">
-        <span>Title</span>
-        <input id="ed-title" type="text" placeholder="e.g. Anna and the rainy day">
-      </label>
-
-      <label class="field">
-        <span>Passage text</span>
-        <textarea id="ed-content" rows="5" placeholder="Type or paste the reading passage…"></textarea>
+        <span>Reading Title</span>
+        <input id="ed-title" type="text" placeholder="Enter a title...">
       </label>
 
       <div class="editor-grid">
         <div class="panel">
           <div class="panel-head">
-            <h3>Passage</h3>
+            <h3>Reading Passage</h3>
             <div class="toolbar">
-              <button id="btn-mark" type="button" disabled>Mark evidence</button>
-              <button id="btn-unmark" class="ghost" type="button" disabled>Remove mark</button>
+              <button id="btn-mode-edit" class="small" type="button">Edit Passage</button>
+              <button id="btn-mode-mark" class="small ghost" type="button">Mark Evidence</button>
             </div>
           </div>
-          <p class="hint panel-note">Select text in the passage, then choose <b>Mark evidence</b>.</p>
-          <div id="passage-preview" class="passage"></div>
-          <p class="hint">Evidence shown for: <b id="ed-current-q">—</b></p>
+
+          <p id="ed-hint" class="hint panel-note">
+            Select text in the passage, then set the Supporting Passage and highlight Key Evidence.
+          </p>
+
+          <textarea id="ed-content" rows="14" placeholder="Paste or type the full reading passage..."></textarea>
+
+          <div id="passage-preview" class="passage passage-edit" hidden></div>
+
+          <div id="evidence-tools" class="evidence-tools" hidden>
+            <button id="btn-set-support" class="small" type="button" disabled>Set Supporting Passage</button>
+            <button id="btn-key-evidence" class="small" type="button" disabled>Highlight Key Evidence</button>
+            <button id="btn-clear-support" class="small ghost" type="button" disabled>Clear Supporting Passage</button>
+            <button id="btn-clear-keys" class="small ghost" type="button" disabled>Clear Key Evidence</button>
+            <p id="ed-error" class="warn" hidden></p>
+          </div>
         </div>
 
         <div class="panel">
           <div class="panel-head">
             <h3>Questions</h3>
-            <button id="btn-add-question" type="button">Add question</button>
+            <button id="btn-add-question" class="small" type="button">Add Question</button>
           </div>
-          <ol id="question-list" class="question-list"></ol>
+
+          <div id="question-tabs" class="question-tabs" role="tablist"></div>
+
+          <div>
+            <label class="field">
+              <span>Question</span>
+              <input id="q-prompt" type="text" placeholder="Enter your question...">
+            </label>
+
+            <div class="field">
+              <span>Answer Options <em class="helper">Select the correct answer.</em></span>
+              <div id="q-options" class="q-options"></div>
+              <button id="btn-add-option" class="small ghost" type="button">Add Option</button>
+            </div>
+
+            <div id="q-evidence" class="q-evidence"></div>
+
+            <div class="q-actions">
+              <button id="btn-move-up" class="small ghost" type="button">Move Up</button>
+              <button id="btn-move-down" class="small ghost" type="button">Move Down</button>
+              <button id="btn-delete-question" class="small ghost danger" type="button">Delete Question</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -72,44 +113,86 @@
       </div>
     </section>
 
-    <!-- SCR-03: Teaching room -->
+    <!-- SET + TCH: Teaching -->
     <section id="view-teaching" class="view" hidden>
       <div class="view-head">
-        <h2 id="teach-title">Teaching room</h2>
-        <button id="btn-teach-exit" class="ghost" type="button">&larr; Library</button>
+        <h2 id="teach-title">Start Teaching</h2>
+        <button id="btn-teach-exit" class="ghost" type="button">Exit Lesson</button>
       </div>
 
       <div id="teach-setup" class="setup">
+        <p id="teach-summary" class="teach-summary"></p>
         <label class="field">
-          <span>Students (one per line)</span>
-          <textarea id="teach-students" rows="8" placeholder="One student name per line"></textarea>
+          <span>Student Names</span>
+          <textarea id="teach-students" rows="10" placeholder="Enter student names, one per line..."></textarea>
         </label>
-        <p id="teach-dupes" class="warn"></p>
+        <p class="hint">Paste a list from a spreadsheet or type names on separate lines.</p>
+        <p id="setup-error" class="warn" hidden>Add at least one student to start.</p>
         <div class="setup-foot">
           <span id="teach-count">0 students</span>
-          <button id="btn-teach-start" type="button" disabled>Start session</button>
+          <button id="btn-start-session" type="button" disabled>Start Session</button>
         </div>
       </div>
 
-      <div id="teach-session" hidden>
-        <div class="teach-top">
-          <span id="teach-progress"></span>
-          <span id="teach-status" class="status"></span>
-        </div>
-        <div class="teach-grid">
-          <div class="panel">
-            <div id="teach-passage" class="passage passage-big"></div>
+      <div id="teach-session" class="teach-session" hidden>
+        <div id="teach-progress" class="teach-progress">Question 1 of 1</div>
+
+        <!-- TCH-01: spin the wheel -->
+        <div id="stage-spin" class="stage" hidden>
+          <div class="wheel-wrap">
+            <div id="wheel-wrap" class="wheel-slot"></div>
+            <div class="wheel-pointer" aria-hidden="true"></div>
           </div>
-          <div class="panel">
-            <div id="teach-question" class="teach-question"></div>
-            <div class="spin">
-              <div id="spin-name" class="spin-name">—</div>
-              <div class="spin-actions">
-                <button id="btn-spin" type="button">Spin</button>
-                <button id="btn-reveal" class="ghost" type="button">Reveal answer</button>
-                <button id="btn-next" class="ghost" type="button">Next question</button>
+          <button id="btn-spin" class="btn-spin" type="button">Spin</button>
+          <p id="spin-roster" class="spin-roster"></p>
+          <div id="spin-empty" class="spin-empty" hidden>
+            <p class="empty-title">No students left on the wheel</p>
+            <p>Restore the student list to continue.</p>
+            <button id="btn-restore" class="ghost" type="button">Restore All Students</button>
+          </div>
+        </div>
+
+        <!-- TCH-01 result: Keep / Remove -->
+        <div id="stage-selected" class="stage stage-selected" hidden>
+          <p id="sel-name" class="sel-name"></p>
+          <p class="sel-sub">You're up!</p>
+          <div class="sel-actions">
+            <div class="sel-choice">
+              <button id="btn-keep" class="btn-keep" type="button">Keep</button>
+              <span class="choice-help">Keep on the wheel</span>
+            </div>
+            <div class="sel-choice">
+              <button id="btn-remove" class="ghost" type="button">Remove</button>
+              <span class="choice-help">Remove from future spins</span>
+            </div>
+          </div>
+          <button id="btn-spin-again" class="link-btn" type="button">Spin Again</button>
+        </div>
+
+        <!-- TCH-02 / TCH-03: question, before and after reveal -->
+        <div id="stage-question" class="stage" hidden>
+          <div class="teach-grid">
+            <div class="panel">
+              <p id="teach-student" class="teach-student"></p>
+              <div id="teach-passage" class="passage passage-big"></div>
+            </div>
+            <div class="panel">
+              <div id="teach-question" class="teach-question"></div>
+              <div class="teach-actions">
+                <button id="btn-reveal" type="button">Reveal Answer</button>
+                <button id="btn-next" class="ghost" type="button" hidden>Next Question</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- TCH-04: lesson complete -->
+        <div id="stage-done" class="stage stage-done" hidden>
+          <h2 class="done-title">Lesson Complete!</h2>
+          <p id="done-count" class="done-count"></p>
+          <div class="done-actions">
+            <button id="btn-teach-again" type="button">Teach Again</button>
+            <button id="btn-back-library" class="ghost" type="button">Back to My Readings</button>
           </div>
         </div>
       </div>
