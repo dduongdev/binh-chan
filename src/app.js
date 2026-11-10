@@ -1,20 +1,20 @@
-// SCR-02 lưu bài đọc ở localStorage; điều khiển 3 màn hình. Nội dung giáo viên nhập luôn hiển thị dạng text (không innerHTML).
+// ReadingFlow — điều khiển màn hình (LIB/EDT/SET/TCH) trên localStorage.
+// Mọi nội dung giáo viên nhập hiển thị dạng text (textContent), không bao giờ innerHTML.
 (function () {
   'use strict';
 
   const Logic = window.Logic;
-  const STORAGE_KEY = 'binhchan.passages.v1';
+  const STORAGE_KEY = 'readingflow.readings.v1';
 
   const el = function (id) { return document.getElementById(id); };
 
-  let passages = [];
-  let editing = null;   // { passage, currentQuestion, dirty, baselineContent }
-  let selectedMark = null; // { start, end } đánh dấu đang chọn để bỏ
-  let session = null;
+  let readings = [];
+  // { reading, questionIndex, mode: 'edit'|'mark', dirty, baselineContent }
+  let editing = null;
 
   /* ---------------- storage ---------------- */
 
-  function loadPassages() {
+  function loadReadings() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
       return Array.isArray(raw) ? raw : [];
@@ -22,23 +22,42 @@
       return [];
     }
   }
+
   function persist() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(passages));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(readings));
     } catch (e) {
       alert("Couldn't save to local storage (it may be full or blocked).");
     }
   }
 
-  /* ---------------- dựng đối tượng ---------------- */
+  /* ---------------- đối tượng (SPEC §6) ---------------- */
 
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-  function newPassage() {
+
+  function newOption() { return { id: Logic.newId(), text: '', order: 0 }; }
+
+  function newQuestion() {
+    return {
+      id: Logic.newId(), order: 0, prompt: '',
+      options: [newOption(), newOption()],
+      correctOptionId: null,
+      supportingPassage: null,
+      keyEvidence: []
+    };
+  }
+
+  function newReading() {
     return { id: Logic.newId(), title: '', content: '', questions: [], createdAt: Date.now(), updatedAt: Date.now() };
   }
-  function newOption() { return { id: Logic.newId(), content: '', isCorrect: false }; }
-  function newQuestion() { return { id: Logic.newId(), content: '', options: [newOption(), newOption()], highlights: [] }; }
-  function overlaps(a, b) { return a.startOffset < b.endOffset && b.startOffset < a.endOffset; }
+
+  // Giữ order == vị trí mảng (SPEC §6.1).
+  function syncOrders(reading) {
+    (reading.questions || []).forEach(function (q, i) {
+      q.order = i;
+      (q.options || []).forEach(function (o, j) { o.order = j; });
+    });
+  }
 
   function mkBtn(label, handler, cls) {
     const b = document.createElement('button');
@@ -53,81 +72,255 @@
     ['library', 'editor', 'teaching'].forEach(function (v) { el('view-' + v).hidden = v !== name; });
   }
 
-  /* ---------------- SCR-01: Thư viện ---------------- */
+  /* ---------------- LIB: My Readings ---------------- */
+
+  function readyBadge(reading) {
+    const v = Logic.validatePassage(reading);
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + (v.ready ? 'ready' : 'draft');
+    badge.textContent = v.ready ? 'Ready to teach' : 'Draft';
+    return { badge: badge, validation: v };
+  }
 
   function renderLibrary() {
     const list = el('passage-list');
     list.textContent = '';
-    el('library-empty').hidden = passages.length > 0;
+    const query = (el('lib-search').value || '').trim().toLowerCase();
+    const shown = readings.filter(function (r) {
+      return !query || (r.title || '').toLowerCase().indexOf(query) !== -1;
+    });
 
-    passages.forEach(function (p) {
-      const v = Logic.validatePassage(p);
+    el('library-empty').hidden = readings.length > 0;
+    if (readings.length > 0 && shown.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'passage-item';
+      const p = document.createElement('p');
+      p.className = 'p-meta';
+      p.textContent = 'No readings match your search.';
+      li.appendChild(p);
+      list.appendChild(li);
+    }
+
+    shown.forEach(function (r) {
       const li = document.createElement('li');
       li.className = 'passage-item';
 
       const info = document.createElement('div');
       info.className = 'p-info';
       const title = document.createElement('h3');
-      title.textContent = p.title || '(Untitled)';
+      title.textContent = r.title || '(Untitled)';
       const meta = document.createElement('p');
       meta.className = 'p-meta';
-      const count = (p.questions || []).length;
-      meta.appendChild(document.createTextNode(count === 1 ? '1 question' : count + ' questions'));
-      const badge = document.createElement('span');
-      badge.className = 'badge ' + (v.ready ? 'ready' : 'draft');
-      badge.textContent = v.ready ? 'Ready to teach' : 'Draft';
-      meta.appendChild(badge);
+      const count = (r.questions || []).length;
+      meta.appendChild(document.createTextNode(count + (count === 1 ? ' question' : ' questions')));
+      meta.appendChild(document.createTextNode(' · ' + new Date(r.updatedAt || r.createdAt || Date.now()).toLocaleDateString()));
+      const v = readyBadge(r);
+      meta.appendChild(v.badge);
       info.append(title, meta);
 
       const actions = document.createElement('div');
       actions.className = 'p-actions';
 
-      const edit = mkBtn('Edit', function () { openEditor(p.id); }, 'ghost');
-      const teach = mkBtn('Start teaching', function () { openTeaching(p.id); });
-      teach.disabled = !v.ready;
-      if (!v.ready) teach.title = 'Not ready yet: ' + v.problems.join(' ');
+      const teach = mkBtn('Start Teaching', function () { beginTeaching(r.id); });
+      teach.disabled = !v.validation.ready;
+      if (!v.validation.ready) teach.title = v.validation.problems.join(' ');
+      const edit = mkBtn('Edit', function () { openEditor(r.id); }, 'ghost');
       const del = mkBtn('Delete', function () {
-        if (confirm('Delete "' + (p.title || '(untitled)') + '"?')) {
-          passages = passages.filter(function (x) { return x !== p; });
-          persist();
-          renderLibrary();
-        }
+        if (!confirm('Delete this reading? This action cannot be undone.')) return;
+        readings = readings.filter(function (x) { return x.id !== r.id; });
+        persist();
+        renderLibrary();
       }, 'ghost danger');
 
-      actions.append(edit, teach, del);
+      actions.append(teach, edit, del);
       li.append(info, actions);
       list.appendChild(li);
     });
   }
 
-  /* ---------------- SCR-02: Trình chỉnh sửa ---------------- */
+  /* ---------------- EDT: Reading Editor ---------------- */
 
   function openEditor(id) {
-    const src = id ? passages.find(function (p) { return p.id === id; }) : null;
-    const p = src ? clone(src) : newPassage();
+    const src = id ? readings.find(function (r) { return r.id === id; }) : null;
+    const reading = src ? clone(src) : newReading();
     editing = {
-      passage: p,
-      currentQuestion: p.questions.length ? 0 : -1,
+      reading: reading,
+      questionIndex: reading.questions.length ? 0 : -1,
+      mode: 'edit',
       dirty: false,
-      baselineContent: p.content || ''
+      baselineContent: reading.content || ''
     };
-    el('ed-title').value = p.title || '';
-    el('ed-content').value = p.content || '';
     el('ed-status').textContent = '';
-    renderQuestions();
-    renderPreview();
-    updateCurrentQLabel();
-    updateValidity();
-    el('btn-unmark').disabled = true;
+    renderEditor();
     showView('editor');
     el('ed-title').focus();
   }
 
-  function leaveEditor() {
-    if (editing.dirty && !confirm('You have unsaved changes. Leave without saving?')) return;
-    editing = null;
-    renderLibrary();
-    showView('library');
+  function renderEditor() {
+    const r = editing.reading;
+    el('ed-title').value = r.title || '';
+    el('ed-content').value = r.content || '';
+
+    const marking = editing.mode === 'mark';
+    el('ed-content').hidden = marking;
+    el('passage-preview').hidden = !marking;
+    el('evidence-tools').hidden = !marking;
+    el('ed-hint').hidden = !marking;
+    el('btn-mode-edit').className = marking ? 'small ghost' : 'small';
+    el('btn-mode-mark').className = marking ? 'small' : 'small ghost';
+
+    renderQuestionTabs();
+    renderQuestionForm();
+    renderPreview();
+    updateValidity();
+  }
+
+  function renderQuestionTabs() {
+    const box = el('question-tabs');
+    box.textContent = '';
+    editing.reading.questions.forEach(function (q, i) {
+      const b = mkBtn(String(i + 1), function () { selectQuestion(i); }, 'q-tab');
+      if (i === editing.questionIndex) b.classList.add('current');
+      b.title = q.prompt || 'Question ' + (i + 1);
+      box.appendChild(b);
+    });
+    el('q-prompt').disabled = editing.questionIndex < 0;
+    el('btn-add-option').disabled = editing.questionIndex < 0;
+  }
+
+  function selectQuestion(i) {
+    if (editing.questionIndex === i) return;
+    editing.questionIndex = i;
+    renderQuestionTabs();
+    renderQuestionForm();
+    renderPreview();
+  }
+
+  function renderQuestionForm() {
+    const q = currentQuestion();
+    const noQ = !q;
+
+    el('q-prompt').value = q ? (q.prompt || '') : '';
+    el('q-prompt').disabled = noQ;
+
+    const box = el('q-options');
+    box.textContent = '';
+    if (q) {
+      q.options.forEach(function (o) { box.appendChild(buildOptionRow(q, o)); });
+    }
+
+    el('btn-add-option').disabled = noQ;
+    el('btn-move-up').disabled = noQ || editing.questionIndex <= 0;
+    el('btn-move-down').disabled = noQ || editing.questionIndex >= editing.reading.questions.length - 1;
+    el('btn-delete-question').disabled = noQ;
+
+    renderEvidenceStatus();
+  }
+
+  function buildOptionRow(q, o) {
+    const row = document.createElement('div');
+    row.className = 'opt-row';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'correct-' + q.id;
+    radio.checked = q.correctOptionId === o.id;
+    radio.title = 'Correct answer';
+    radio.setAttribute('aria-label', 'Correct answer');
+    radio.addEventListener('change', function () {
+      q.correctOptionId = o.id;
+      markDirty();
+      updateValidity();
+    });
+
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.className = 'opt-text';
+    text.placeholder = 'Answer option';
+    text.setAttribute('aria-label', 'Answer option');
+    text.value = o.text || '';
+    text.addEventListener('input', function () { o.text = text.value; markDirty(); updateValidity(); });
+
+    const del = mkBtn('\u00d7', function () {
+      q.options = q.options.filter(function (x) { return x.id !== o.id; });
+      if (q.correctOptionId === o.id) q.correctOptionId = null;
+      markDirty();
+      renderQuestionForm();
+      updateValidity();
+    }, 'ghost small opt-remove');
+    del.title = 'Remove option';
+    del.setAttribute('aria-label', 'Remove option');
+    del.disabled = q.options.length <= 2; // bất biến: mỗi câu ≥ 2 lựa chọn
+
+    row.append(radio, text, del);
+    return row;
+  }
+
+  // Nhãn trạng thái dẫn chứng của câu đang chọn (nội dung chi tiết do Task 4 lo).
+  function renderEvidenceStatus() {
+    const q = currentQuestion();
+    const box = el('q-evidence');
+    box.textContent = '';
+    if (!q) {
+      box.textContent = 'Add a question to attach evidence.';
+      return;
+    }
+    const p1 = document.createElement('p');
+    const supportOk = !!q.supportingPassage;
+    p1.className = supportOk ? 'yes' : '';
+    p1.textContent = (supportOk ? '\u2713 ' : '') + 'Supporting Passage' + (supportOk ? ' selected' : ' not set');
+    const p2 = document.createElement('p');
+    const n = (q.keyEvidence || []).length;
+    p2.className = n > 0 ? 'yes' : '';
+    p2.textContent = (n > 0 ? '\u2713 ' : '') + n + ' Key Evidence highlight' + (n === 1 ? '' : 's');
+    box.append(p1, p2);
+  }
+
+  function currentQuestion() {
+    if (!editing || editing.questionIndex < 0) return null;
+    return editing.reading.questions[editing.questionIndex] || null;
+  }
+
+  function addQuestion() {
+    editing.reading.questions.push(newQuestion());
+    editing.questionIndex = editing.reading.questions.length - 1;
+    markDirty();
+    renderQuestionTabs();
+    renderQuestionForm();
+    renderPreview();
+    updateValidity();
+  }
+
+  function deleteQuestion() {
+    if (!confirm('Delete this question?')) return;
+    editing.reading.questions.splice(editing.questionIndex, 1);
+    if (editing.questionIndex >= editing.reading.questions.length) {
+      editing.questionIndex = editing.reading.questions.length - 1;
+    }
+    markDirty();
+    renderQuestionTabs();
+    renderQuestionForm();
+    renderPreview();
+    updateValidity();
+  }
+
+  function moveQuestion(delta) {
+    const qs = editing.reading.questions;
+    const i = editing.questionIndex;
+    const j = i + delta;
+    if (j < 0 || j >= qs.length) return;
+    const tmp = qs[i]; qs[i] = qs[j]; qs[j] = tmp;
+    editing.questionIndex = j;
+    markDirty();
+    renderQuestionTabs();
+    renderQuestionForm();
+    updateValidity();
+  }
+
+  // Xem trước khi ở chế độ Mark Evidence (Task 4 thay bằng dẫn chứng 2 cấp).
+  function renderPreview() {
+    const preview = el('passage-preview');
+    preview.textContent = editing ? (editing.reading.content || '') : '';
   }
 
   function markDirty() {
@@ -138,408 +331,77 @@
 
   function updateValidity() {
     if (!editing) return;
-    const v = Logic.validatePassage(editing.passage);
+    const v = Logic.validatePassage(editing.reading);
     const node = el('ed-valid');
-    node.textContent = v.ready ? 'Ready to teach' : 'Draft — missing: ' + v.problems.join(' ');
-    node.classList.toggle('ok', v.ready);
-    node.classList.toggle('warn', !v.ready);
+    node.textContent = v.ready ? 'Ready to teach' : 'Draft \u2014 ' + v.problems.join(' ');
+    node.className = 'status ' + (v.ready ? 'ok' : 'warn');
+    const teach = el('btn-editor-teach');
+    teach.disabled = !v.ready;
+    teach.title = v.ready ? '' : v.problems.join(' ');
   }
 
-  function updateCurrentQLabel() {
-    const q = editing && editing.passage.questions[editing.currentQuestion];
-    el('ed-current-q').textContent = q ? ('Question ' + (editing.currentQuestion + 1)) : '— (none selected)';
-  }
-
-  function setCurrentQuestion(i) {
-    if (!editing || editing.currentQuestion === i) return;
-    editing.currentQuestion = i;
-    Array.prototype.forEach.call(el('question-list').children, function (card, idx) {
-      if (card.classList.contains('q-card')) card.classList.toggle('current', idx === i);
-    });
-    renderPreview();
-    updateCurrentQLabel();
-  }
-
-  function renderQuestions() {
-    const list = el('question-list');
-    list.textContent = '';
-    const qs = editing.passage.questions;
-    if (!qs.length) {
-      const p = document.createElement('p');
-      p.className = 'hint';
-      p.textContent = 'No questions yet. Add one to get started.';
-      list.appendChild(p);
-      return;
-    }
-    qs.forEach(function (q, i) { list.appendChild(buildQuestionCard(q, i)); });
-  }
-
-  function buildQuestionCard(q, index) {
-    const li = document.createElement('li');
-    li.className = 'q-card' + (index === editing.currentQuestion ? ' current' : '');
-    li.addEventListener('click', function (e) {
-      if (e.target.closest('input, button')) return;
-      setCurrentQuestion(index);
-    });
-
-    const head = document.createElement('div');
-    head.className = 'q-head';
-    const tag = document.createElement('span');
-    tag.className = 'q-tag';
-    tag.textContent = 'Question ' + (index + 1);
-    head.appendChild(tag);
-    const up = mkBtn('↑', function () { moveQuestion(index, -1); }, 'ghost small');
-    up.title = 'Move up';
-    up.setAttribute('aria-label', 'Move up');
-    head.appendChild(up);
-    const down = mkBtn('↓', function () { moveQuestion(index, 1); }, 'ghost small');
-    down.title = 'Move down';
-    down.setAttribute('aria-label', 'Move down');
-    head.appendChild(down);
-    head.appendChild(mkBtn('Delete', function () { deleteQuestion(index); }, 'ghost small danger'));
-    li.appendChild(head);
-
-    const content = document.createElement('input');
-    content.type = 'text';
-    content.className = 'q-content';
-    content.placeholder = 'Question text';
-    content.value = q.content || '';
-    content.addEventListener('focus', function () { setCurrentQuestion(index); });
-    content.addEventListener('input', function () { q.content = content.value; markDirty(); updateValidity(); });
-    li.appendChild(content);
-
-    const opts = document.createElement('div');
-    opts.className = 'q-options';
-    (q.options || []).forEach(function (o) { opts.appendChild(buildOptionRow(q, o, index)); });
-    li.appendChild(opts);
-
-    li.appendChild(mkBtn('+ Add choice', function () {
-      q.options.push(newOption());
-      markDirty(); updateValidity(); renderQuestions();
-    }, 'ghost small'));
-
-    const info = document.createElement('p');
-    info.className = 'hint';
-    const marks = (q.highlights || []).length;
-    info.textContent = 'Evidence: ' + marks + (marks === 1 ? ' mark' : ' marks');
-    li.appendChild(info);
-
-    return li;
-  }
-
-  function buildOptionRow(q, o, qIndex) {
-    const row = document.createElement('div');
-    row.className = 'opt-row';
-
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'correct-' + q.id;
-    radio.checked = !!o.isCorrect;
-    radio.title = 'Correct answer';
-    radio.addEventListener('focus', function () { setCurrentQuestion(qIndex); });
-    radio.addEventListener('change', function () {
-      q.options.forEach(function (x) { x.isCorrect = false; });
-      o.isCorrect = true;
-      markDirty(); updateValidity(); renderQuestions();
-    });
-
-    const text = document.createElement('input');
-    text.type = 'text';
-    text.className = 'opt-text';
-    text.placeholder = 'Answer choice';
-    text.value = o.content || '';
-    text.addEventListener('focus', function () { setCurrentQuestion(qIndex); });
-    text.addEventListener('input', function () { o.content = text.value; markDirty(); updateValidity(); });
-
-    const del = mkBtn('×', function () {
-      q.options = q.options.filter(function (x) { return x !== o; });
-      markDirty(); updateValidity(); renderQuestions();
-    }, 'ghost small danger');
-    del.title = 'Remove choice';
-
-    row.append(radio, text, del);
-    return row;
-  }
-
-  function addQuestion() {
-    editing.passage.questions.push(newQuestion());
-    editing.currentQuestion = editing.passage.questions.length - 1;
-    markDirty(); renderQuestions(); renderPreview(); updateCurrentQLabel(); updateValidity();
-  }
-
-  function moveQuestion(index, delta) {
-    const qs = editing.passage.questions;
-    const j = index + delta;
-    if (j < 0 || j >= qs.length) return;
-    const tmp = qs[index]; qs[index] = qs[j]; qs[j] = tmp;
-    if (editing.currentQuestion === index) editing.currentQuestion = j;
-    else if (editing.currentQuestion === j) editing.currentQuestion = index;
-    markDirty(); renderQuestions(); renderPreview(); updateCurrentQLabel();
-  }
-
-  function deleteQuestion(index) {
-    if (!confirm('Delete this question?')) return;
-    editing.passage.questions.splice(index, 1);
-    if (editing.currentQuestion >= editing.passage.questions.length) {
-      editing.currentQuestion = editing.passage.questions.length - 1;
-    }
-    markDirty(); renderQuestions(); renderPreview(); updateCurrentQLabel(); updateValidity();
-  }
-
-  /* ---------------- bài đọc + dẫn chứng ---------------- */
-
-  // Dựng nội dung bằng text node/mark (không innerHTML) nên an toàn XSS và textContent === content.
-  function renderPassage(container, content, ranges) {
-    container.textContent = '';
-    const sorted = (ranges || []).slice().sort(function (a, b) { return a.startOffset - b.startOffset; });
-    let pos = 0;
-    sorted.forEach(function (r) {
-      if (r.startOffset < pos || r.endOffset > content.length || r.startOffset >= r.endOffset) return;
-      if (r.startOffset > pos) container.appendChild(document.createTextNode(content.slice(pos, r.startOffset)));
-      const mark = document.createElement('mark');
-      mark.textContent = content.slice(r.startOffset, r.endOffset);
-      mark.dataset.start = r.startOffset;
-      mark.dataset.end = r.endOffset;
-      container.appendChild(mark);
-      pos = r.endOffset;
-    });
-    if (pos < content.length) container.appendChild(document.createTextNode(content.slice(pos)));
-  }
-
-  function renderPreview() {
-    if (!editing) return;
-    const q = editing.passage.questions[editing.currentQuestion];
-    renderPassage(el('passage-preview'), editing.passage.content || '', q ? (q.highlights || []) : []);
-    selectedMark = null;
-    el('btn-unmark').disabled = true;
-  }
-
-  function selectionOffsets() {
-    const container = el('passage-preview');
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
-    const range = sel.getRangeAt(0);
-    if (!container.contains(range.startContainer) || !container.contains(range.endContainer)) return null;
-    const pre = document.createRange();
-    pre.selectNodeContents(container);
-    pre.setEnd(range.startContainer, range.startOffset);
-    const start = pre.toString().length;
-    const end = start + range.toString().length;
-    if (start >= end) return null;
-    return { startOffset: start, endOffset: end };
-  }
-
-  function updateMarkButton() {
-    if (!editing || el('view-editor').hidden) return;
-    const off = selectionOffsets();
-    el('btn-mark').disabled = !off || editing.currentQuestion < 0;
-  }
-
-  function markSelection() {
-    const off = selectionOffsets();
-    if (!off || !editing || editing.currentQuestion < 0) return;
-    const q = editing.passage.questions[editing.currentQuestion];
-    q.highlights = q.highlights || [];
-    if (q.highlights.some(function (h) { return overlaps(h, off); })) {
-      alert('That selection overlaps evidence already marked for this question.');
-      return;
-    }
-    q.highlights.push(off);
-    if (window.getSelection) window.getSelection().removeAllRanges();
-    markDirty(); renderPreview(); renderQuestions(); updateValidity();
-  }
-
-  function onPreviewClick(e) {
-    const mark = e.target.closest('mark');
-    if (!mark || !editing) return;
-    el('passage-preview').querySelectorAll('mark.selected').forEach(function (m) { m.classList.remove('selected'); });
-    mark.classList.add('selected');
-    selectedMark = { start: Number(mark.dataset.start), end: Number(mark.dataset.end) };
-    el('btn-unmark').disabled = false;
-  }
-
-  function unmarkSelected() {
-    if (!editing || !selectedMark) return;
-    const q = editing.passage.questions[editing.currentQuestion];
-    if (!q) return;
-    q.highlights = (q.highlights || []).filter(function (h) {
-      return !(h.startOffset === selectedMark.start && h.endOffset === selectedMark.end);
-    });
-    markDirty(); renderPreview(); renderQuestions(); updateValidity();
-  }
-
-  // AC-09 / SPEC §7.4: sửa nội dung khi đã có dẫn chứng thì phải xác nhận xóa hết.
+  // SPEC §6.5: sửa nội dung khi đã có dẫn chứng → cảnh báo rồi xóa toàn bộ dẫn chứng.
   function reconcileContent() {
     if (!editing) return true;
-    const p = editing.passage;
-    if (p.content === editing.baselineContent) return true;
-    const hasHighlights = p.questions.some(function (q) { return (q.highlights || []).length; });
-    if (hasHighlights && !confirm('The passage text has changed. Remove all existing evidence to avoid misaligned marks?')) {
-      p.content = editing.baselineContent;
+    const r = editing.reading;
+    if ((r.content || '') === editing.baselineContent) return true;
+    const hasEvidence = r.questions.some(function (q) {
+      return !!q.supportingPassage || (q.keyEvidence || []).length > 0;
+    });
+    if (hasEvidence && !confirm('Editing this passage will clear the existing evidence highlights. Continue?')) {
+      r.content = editing.baselineContent;
       el('ed-content').value = editing.baselineContent;
       renderPreview();
       return false;
     }
-    if (hasHighlights) p.questions.forEach(function (q) { q.highlights = []; });
-    editing.baselineContent = p.content;
+    if (hasEvidence) {
+      r.questions.forEach(function (q) { q.supportingPassage = null; q.keyEvidence = []; });
+    }
+    editing.baselineContent = r.content || '';
     markDirty();
-    renderPreview(); renderQuestions(); updateValidity();
+    renderPreview();
+    renderQuestionForm();
+    updateValidity();
     return true;
+  }
+
+  function setMode(mode) {
+    if (!editing || editing.mode === mode) return;
+    if (mode === 'mark' && !reconcileContent()) return;
+    editing.mode = mode;
+    renderEditor();
   }
 
   function saveEditor() {
     if (!editing) return;
     if (!reconcileContent()) return;
-    const p = editing.passage;
-    p.updatedAt = Date.now();
-    const i = passages.findIndex(function (x) { return x.id === p.id; });
-    if (i >= 0) passages[i] = p; else passages.push(p);
+    const r = editing.reading;
+    syncOrders(r);
+    r.updatedAt = Date.now();
+    const i = readings.findIndex(function (x) { return x.id === r.id; });
+    if (i >= 0) readings[i] = r; else readings.push(r);
     persist();
     editing.dirty = false;
-    el('ed-status').textContent = 'Saved at ' + new Date().toLocaleTimeString();
+    el('ed-status').textContent = 'Reading saved';
+    updateValidity();
   }
 
-  /* ---------------- SCR-03: Phòng giảng dạy ---------------- */
+  function leaveEditor() {
+    if (editing.dirty && !confirm('You have unsaved changes.')) return;
+    editing = null;
+    renderLibrary();
+    showView('library');
+  }
 
-  function openTeaching(id) {
-    const src = passages.find(function (p) { return p.id === id; });
+  /* ---------------- SET + TCH: teaching (Task 5) ---------------- */
+
+  function beginTeaching(id) {
+    const src = readings.find(function (r) { return r.id === id; });
     if (!src) return;
     const v = Logic.validatePassage(src);
-    if (!v.ready) { alert("This passage isn't ready to teach:\n" + v.problems.join('\n')); return; }
-    session = {
-      passage: clone(src),
-      students: [],
-      availableStudents: [],
-      currentQuestionIndex: 0,
-      selectedStudent: null,
-      answerRevealed: false,
-      status: 'SETUP',
-      spinning: false
-    };
-    el('teach-title').textContent = src.title || 'Teaching room';
-    el('teach-students').value = '';
-    el('teach-setup').hidden = false;
-    el('teach-session').hidden = true;
-    updateStudentCount();
+    if (!v.ready) { alert(v.problems.join('\n')); return; }
+    el('teach-title').textContent = src.title || 'Start Teaching';
     showView('teaching');
-    el('teach-students').focus();
-  }
-
-  function updateStudentCount() {
-    const res = Logic.normalizeStudentList(el('teach-students').value);
-    const n = res.names.length;
-    el('teach-count').textContent = n === 1 ? '1 student' : n + ' students';
-    el('btn-teach-start').disabled = n < 1;
-    el('teach-dupes').textContent = res.duplicates.length
-      ? 'Removed ' + res.duplicates.length + (res.duplicates.length === 1 ? ' duplicate name: ' : ' duplicate names: ') + res.duplicates.join(', ')
-      : '';
-  }
-
-  function startSession() {
-    const res = Logic.normalizeStudentList(el('teach-students').value);
-    if (res.names.length < 1) return;
-    session.students = res.names;
-    session.availableStudents = res.names.slice();
-    session.currentQuestionIndex = 0;
-    session.selectedStudent = null;
-    session.answerRevealed = false;
-    session.status = 'IN_PROGRESS';
-    el('teach-setup').hidden = true;
-    el('teach-session').hidden = false;
-    renderSession();
-  }
-
-  function renderSession() {
-    const s = session;
-    const q = s.passage.questions[s.currentQuestionIndex];
-    const last = s.currentQuestionIndex === s.passage.questions.length - 1;
-    const finished = s.status === 'COMPLETED';
-
-    el('teach-progress').textContent = 'Question ' + (s.currentQuestionIndex + 1) + '/' + s.passage.questions.length;
-
-    renderPassage(el('teach-passage'), s.passage.content || '', s.answerRevealed ? (q.highlights || []) : []);
-
-    const qBox = el('teach-question');
-    qBox.textContent = '';
-    const qContent = document.createElement('p');
-    qContent.className = 'teach-q-content';
-    qContent.textContent = q.content || '';
-    qBox.appendChild(qContent);
-    const ul = document.createElement('ul');
-    ul.className = 'teach-options';
-    (q.options || []).forEach(function (o) {
-      const li = document.createElement('li');
-      li.textContent = o.content || '(empty)';
-      if (s.answerRevealed && o.isCorrect) li.classList.add('correct');
-      ul.appendChild(li);
-    });
-    qBox.appendChild(ul);
-
-    el('spin-name').textContent = s.selectedStudent || '—';
-    el('btn-spin').disabled = finished || s.answerRevealed || s.spinning;
-    el('btn-spin').textContent = (s.selectedStudent && !s.answerRevealed) ? 'Spin again' : 'Spin';
-    el('btn-reveal').disabled = finished || !s.selectedStudent || s.answerRevealed || s.spinning;
-    el('btn-next').disabled = finished || !s.answerRevealed;
-    el('btn-next').textContent = last ? 'Finish session' : 'Next question';
-    el('teach-status').textContent = (last && s.answerRevealed) ? 'Complete' : (s.answerRevealed ? 'Answer revealed' : '');
-  }
-
-  function spin() {
-    const s = session;
-    if (!s || s.answerRevealed || s.spinning || s.status !== 'IN_PROGRESS') return;
-    if (s.availableStudents.length === 0) s.availableStudents = s.students.slice();
-    const pool = s.availableStudents;
-    const winner = pool[Logic.pickIndex(pool.length)];
-    s.spinning = true;
-    renderSession();
-
-    const out = el('spin-name');
-    let ticks = 0;
-    const total = 12;
-    const timer = setInterval(function () {
-      ticks++;
-      if (ticks >= total) {
-        clearInterval(timer);
-        out.textContent = winner;
-        s.spinning = false;
-        s.selectedStudent = winner;
-        renderSession();
-        return;
-      }
-      out.textContent = pool[Math.floor(Math.random() * pool.length)];
-    }, 70);
-  }
-
-  function revealAnswer() {
-    const s = session;
-    if (!s || s.answerRevealed || !s.selectedStudent || s.spinning) return;
-    s.answerRevealed = true;
-    const i = s.availableStudents.indexOf(s.selectedStudent);
-    if (i >= 0) s.availableStudents.splice(i, 1); // chỉ tính đã tham gia khi công bố (SPN-06)
-    renderSession();
-  }
-
-  function nextQuestion() {
-    const s = session;
-    if (!s || !s.answerRevealed) return;
-    if (s.currentQuestionIndex >= s.passage.questions.length - 1) { endSession(); return; }
-    s.currentQuestionIndex++;
-    s.selectedStudent = null;
-    s.answerRevealed = false;
-    renderSession();
-  }
-
-  function endSession() {
-    session = null;
-    renderLibrary();
-    showView('library');
-  }
-
-  function leaveTeaching() {
-    if (session && session.status === 'IN_PROGRESS' && !confirm('Leave the session in progress?')) return;
-    session = null;
-    renderLibrary();
-    showView('library');
   }
 
   /* ---------------- khởi tạo ---------------- */
@@ -550,34 +412,57 @@
   }
 
   function init() {
-    passages = loadPassages();
+    readings = loadReadings();
 
-    el('btn-new-passage').addEventListener('click', function () { openEditor(null); });
+    el('btn-create').addEventListener('click', function () { openEditor(null); });
     el('btn-editor-back').addEventListener('click', leaveEditor);
     el('btn-editor-save').addEventListener('click', saveEditor);
+    el('btn-editor-teach').addEventListener('click', function () {
+      if (!editing) return;
+      saveEditor();
+      beginTeaching(editing.reading.id);
+    });
+    el('btn-mode-edit').addEventListener('click', function () { setMode('edit'); });
+    el('btn-mode-mark').addEventListener('click', function () { setMode('mark'); });
     el('btn-add-question').addEventListener('click', addQuestion);
-    el('btn-mark').addEventListener('click', markSelection);
-    el('btn-unmark').addEventListener('click', unmarkSelected);
+    el('btn-add-option').addEventListener('click', function () {
+      const q = currentQuestion();
+      if (!q) return;
+      q.options.push(newOption());
+      markDirty();
+      renderQuestionForm();
+      updateValidity();
+    });
+    el('btn-move-up').addEventListener('click', function () { moveQuestion(-1); });
+    el('btn-move-down').addEventListener('click', function () { moveQuestion(1); });
+    el('btn-delete-question').addEventListener('click', deleteQuestion);
     el('btn-fullscreen').addEventListener('click', toggleFullscreen);
-    el('btn-teach-exit').addEventListener('click', leaveTeaching);
-    el('btn-teach-start').addEventListener('click', startSession);
-    el('btn-spin').addEventListener('click', spin);
-    el('btn-reveal').addEventListener('click', revealAnswer);
-    el('btn-next').addEventListener('click', nextQuestion);
+    el('btn-teach-exit').addEventListener('click', function () {
+      editing = null;
+      renderLibrary();
+      showView('library');
+    });
 
+    el('lib-search').addEventListener('input', renderLibrary);
     el('ed-title').addEventListener('input', function () {
-      editing.passage.title = el('ed-title').value; markDirty(); updateValidity();
+      editing.reading.title = el('ed-title').value;
+      markDirty();
+      updateValidity();
     });
     el('ed-content').addEventListener('input', function () {
-      editing.passage.content = el('ed-content').value; renderPreview(); markDirty(); updateValidity();
+      editing.reading.content = el('ed-content').value;
+      markDirty();
+      updateValidity();
     });
-    el('ed-content').addEventListener('change', reconcileContent);
+    el('q-prompt').addEventListener('input', function () {
+      const q = currentQuestion();
+      if (!q) return;
+      q.prompt = el('q-prompt').value;
+      markDirty();
+      renderQuestionTabs();
+      updateValidity();
+    });
 
-    el('passage-preview').addEventListener('click', onPreviewClick);
-    document.addEventListener('selectionchange', updateMarkButton);
-    el('teach-students').addEventListener('input', updateStudentCount);
-
-    // SPEC §7.4: cảnh báo trước khi rời trang làm mất thay đổi chưa lưu.
     window.addEventListener('beforeunload', function (e) {
       if (editing && editing.dirty) { e.preventDefault(); e.returnValue = ''; }
     });
