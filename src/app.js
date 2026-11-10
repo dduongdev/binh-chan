@@ -19,7 +19,7 @@
   function loadReadings() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      return Array.isArray(raw) ? raw : [];
+      return Array.isArray(raw) ? raw.filter(Boolean) : [];
     } catch (e) {
       return [];
     }
@@ -28,8 +28,10 @@
   function persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(readings));
+      return true;
     } catch (e) {
       alert("Couldn't save to local storage (it may be full or blocked).");
+      return false;
     }
   }
 
@@ -115,7 +117,7 @@
       meta.className = 'p-meta';
       const count = (r.questions || []).length;
       meta.appendChild(document.createTextNode(count + (count === 1 ? ' question' : ' questions')));
-      meta.appendChild(document.createTextNode(' · ' + new Date(r.updatedAt || r.createdAt || Date.now()).toLocaleDateString()));
+      meta.appendChild(document.createTextNode(' · ' + new Date(r.updatedAt || r.createdAt || Date.now()).toLocaleDateString('en-US')));
       const v = readyBadge(r);
       meta.appendChild(v.badge);
       info.append(title, meta);
@@ -130,7 +132,7 @@
       const del = mkBtn('Delete', function () {
         if (!confirm('Delete this reading? This action cannot be undone.')) return;
         readings = readings.filter(function (x) { return x.id !== r.id; });
-        persist();
+        if (!persist()) readings = loadReadings();
         renderLibrary();
       }, 'ghost danger');
 
@@ -183,6 +185,7 @@
     editing.reading.questions.forEach(function (q, i) {
       const b = mkBtn(String(i + 1), function () { selectQuestion(i); }, 'q-tab');
       if (i === editing.questionIndex) b.classList.add('current');
+      b.setAttribute('aria-pressed', i === editing.questionIndex ? 'true' : 'false');
       b.title = q.prompt || 'Question ' + (i + 1);
       box.appendChild(b);
     });
@@ -343,6 +346,11 @@
         mark.dataset.start = seg.startOffset;
         mark.dataset.end = seg.endOffset;
         mark.title = 'Remove Highlight';
+        if (container.id === 'passage-preview') {
+          mark.tabIndex = 0;
+          mark.setAttribute('role', 'button');
+          mark.setAttribute('aria-label', 'Remove Highlight');
+        }
       } else {
         mark.className = 'mark-support';
       }
@@ -484,6 +492,12 @@
     removeKeyEvidence(Number(mark.dataset.start), Number(mark.dataset.end));
   }
 
+  function onPreviewKey(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    onPreviewClick(e);
+    if (e.target.closest('mark.mark-key')) e.preventDefault();
+  }
+
   function markDirty() {
     if (!editing) return;
     editing.dirty = true;
@@ -541,7 +555,7 @@
     r.updatedAt = Date.now();
     const i = readings.findIndex(function (x) { return x.id === r.id; });
     if (i >= 0) readings[i] = r; else readings.push(r);
-    persist();
+    if (!persist()) { editing.dirty = true; return false; }
     editing.dirty = false;
     el('ed-status').textContent = 'Reading saved';
     updateValidity();
@@ -549,7 +563,10 @@
   }
 
   function leaveEditor() {
-    if (editing.dirty && !confirm('You have unsaved changes.')) return;
+    if (editing.dirty) {
+      if (!confirm('You have unsaved changes.')) return;
+      readings = loadReadings(); // bỏ thay đổi: quay về bản đã lưu, không dạy bản nháp
+    }
     editing = null;
     renderLibrary();
     showView('library');
@@ -577,7 +594,7 @@
     if (!v.ready) { alert(v.problems.join('\n')); return; }
     session = { reading: clone(src), names: [], labels: [], state: null, spinning: false, spinToken: 0 };
     editing = null;
-    el('teach-title').textContent = src.title || 'Start Teaching';
+    el('teach-title').textContent = 'Start Teaching';
     el('teach-summary').textContent = (src.title || '(Untitled)') + ' \u00b7 '
       + src.questions.length + (src.questions.length === 1 ? ' question' : ' questions');
     el('teach-students').value = '';
@@ -609,6 +626,7 @@
       selectedStudentId: null
     };
     session.spinning = false;
+    el('teach-title').textContent = session.reading.title || 'Start Teaching';
     el('teach-setup').hidden = true;
     el('teach-session').hidden = false;
     renderSession();
@@ -650,7 +668,7 @@
   function contrastText(hex) {
     const n = parseInt(hex.slice(1), 16);
     const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-    return lum > 0.62 ? '#203548' : '#ffffff';
+    return lum > 0.5 ? '#203548' : '#ffffff';
   }
 
   function buildWheelSVG(students) {
@@ -834,6 +852,7 @@
       el(id).addEventListener('mousedown', function (e) { e.preventDefault(); });
     });
     el('passage-preview').addEventListener('click', onPreviewClick);
+    el('passage-preview').addEventListener('keydown', onPreviewKey);
     document.addEventListener('selectionchange', updateEvidenceButtons);
     el('btn-add-question').addEventListener('click', addQuestion);
     el('btn-add-option').addEventListener('click', function () {
