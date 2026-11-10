@@ -56,9 +56,9 @@ The partner wants a wheel preview on the right — gently spinning, no Spin butt
 
 **CSS (`styles.css`)**
 
-- `.setup` becomes `max-width: 1000px; display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start;`; the existing `@media (max-width: 940px)` block adds `.setup { display: block; }` and `.setup-wheel { margin-top: 18px; }`.
-- `.setup-wheel { width: min(340px, 100%); aspect-ratio: 1; justify-self: center; }` — the slot keeps its own square size so the SVG can be replaced without disturbing layout.
-- `#setup-wheel { width: 100%; height: 100%; animation: setup-wheel-spin 20s linear infinite; }` plus `@keyframes setup-wheel-spin { to { transform: rotate(360deg); } }`.
+- `.setup` becomes `max-width: 1000px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;` (two equal halves, per the partner at execution time); the existing `@media (max-width: 940px)` block adds `.setup { display: block; }` and `.setup-wheel { margin-top: 22px; }`.
+- `.setup-wheel { width: 100%; aspect-ratio: 1; overflow: hidden; }` — the slot fills its half, and the container clips the rotated bounding box (a square rotated 45° is ×1.41 wide) so the spinning preview never adds a horizontal scrollbar. The disc is inscribed in the square, so nothing of the wheel itself is clipped.
+- `#setup-wheel { animation: setup-wheel-spin 20s linear infinite; }` plus `@keyframes setup-wheel-spin { to { transform: rotate(360deg); } }`.
 - The animation lives on the **slot**, not on the SVG's `.wheel-rotor`: the SVG is rebuilt on every keystroke, and rotating the slot keeps the spin continuous instead of restarting it at 0° per character.
 - `prefers-reduced-motion` is already handled globally (`styles.css` reduces every animation to .001ms), so the preview is static for those users with no extra code.
 
@@ -76,7 +76,7 @@ The partner wants a wheel preview on the right — gently spinning, no Spin butt
 
 ## Left to the builder
 
-- The exact rotation duration (20s) and preview width (340px) are starting values; adjust if the screen looks cramped at 1024–1200px.
+- The exact rotation duration (20s) is a starting value; adjust if the wheel looks nervous on a projector.
 - Verify the preview at narrow widths (single column, wheel below the form) and that it never pushes Start Session off screen.
 
 ## Verification

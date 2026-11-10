@@ -25,6 +25,7 @@
 - Empty field: does the screen open with a drawn (grey) wheel, not an empty gap? — Task 1 (check before typing).
 - Duplicate names: does the preview show `An (1)`/`An (2)`, matching the real spin screen? — Task 1 (label check).
 - Narrow viewport (<940px, where the two-column editor collapses): does the form stack above the wheel with no horizontal scroll, and does Start Session stay reachable? — Task 1 (screenshot pass at 375×800).
+- A rotating square is ×1.41 wide at 45°: does the spinning preview add a horizontal scrollbar at 1024–1440px or at 375px? — Task 1 (`.setup-wheel { overflow: hidden }`, measured at three widths).
 - Reduced motion: is the preview static? — Task 1 (existing global block, manual spot check).
 
 ---
@@ -111,18 +112,19 @@ In `index.html`, wrap the existing form children in `.setup-form` and append the
 In `styles.css`, replace `.setup { max-width: 700px; }` with:
 
 ```css
-/* Hai cột: ô nhập tên bên trái, wheel preview tự quay bên phải. */
+/* Hai nửa bằng nhau: ô nhập tên bên trái, wheel preview tự quay bên phải. */
 .setup {
   max-width: 1000px;
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 1fr;
   gap: 28px;
   align-items: start;
 }
 .setup-wheel {
-  width: min(340px, 100%);
+  width: 100%;
   aspect-ratio: 1;
-  justify-self: center;
+  /* Hộp bao của khối vuông khi xoay 45° rộng gấp 1,41 lần -> cắt để không sinh thanh cuộn ngang. */
+  overflow: hidden;
 }
 /* Vòng quay đặt trên khung chứa, không trên SVG: SVG bị dựng lại mỗi lần gõ tên. */
 #setup-wheel { animation: setup-wheel-spin 20s linear infinite; }
@@ -196,7 +198,8 @@ Add after the "Primary CTA" bullet:
 Replace `Center the form with max width around 640–760 px.` with:
 
 ```markdown
-- Two columns above 940 px: the name form on the left (roughly 45–55%) and the wheel preview (~340 px) on the right; centered as a pair with max width around 1000 px.
+- Two equal halves above 940 px: the name form on the left and the wheel preview on the right, the pair capped at about 1000 px.
+- The preview fills its half; it is clipped to that column because a rotating square's bounding box is wider than the column, and a clipped preview must never add a horizontal scrollbar.
 - The preview follows typing: it redraws as names are added or removed, including duplicate disambiguation like `Alex Kim (2)`. An empty list shows a plain grey disc.
 - Below 940 px the form stacks above the preview.
 ```
