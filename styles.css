@@ -396,7 +396,23 @@ input:focus, textarea:focus {
 
 /* ---------------- Teaching room ---------------- */
 
-.setup { max-width: 700px; }
+/* Hai nửa bằng nhau: ô nhập tên bên trái, wheel preview tự quay bên phải. */
+.setup {
+  max-width: 1000px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+.setup-wheel {
+  width: 100%;
+  aspect-ratio: 1;
+  /* Hộp bao của khối vuông khi xoay 45° rộng gấp 1,41 lần -> cắt để không sinh thanh cuộn ngang. */
+  overflow: hidden;
+}
+/* Vòng quay đặt trên khung chứa, không trên SVG: SVG bị dựng lại mỗi lần gõ tên. */
+#setup-wheel { animation: setup-wheel-spin 20s linear infinite; }
+@keyframes setup-wheel-spin { to { transform: rotate(360deg); } }
 .teach-summary { margin: 0 0 18px; color: var(--muted); font-weight: 600; }
 #teach-count { font-weight: 600; color: var(--ink-2); }
 
@@ -551,6 +567,8 @@ input:focus, textarea:focus {
 
 @media (max-width: 940px) {
   .editor-grid { grid-template-columns: 1fr; }
+  .setup { display: block; }
+  .setup-wheel { margin-top: 22px; }
 }
 @media (max-width: 640px) {
   .app-header { padding: 12px 16px; }

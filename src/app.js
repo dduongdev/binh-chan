@@ -586,6 +586,8 @@
     el('teach-count').textContent = names.length + (names.length === 1 ? ' student' : ' students');
     el('setup-error').hidden = names.length > 0 || raw.length === 0;
     el('btn-start-session').disabled = names.length < 1;
+    buildWheelSVG(Logic.disambiguate(names).map(function (n) { return { label: n }; }),
+      el('setup-wheel'));
   }
 
   function startSession() {
@@ -646,8 +648,10 @@
     return lum > 0.5 ? '#203548' : '#ffffff';
   }
 
-  function buildWheelSVG(students) {
-    const slot = el('wheel-wrap');
+  function buildWheelSVG(students, container) {
+    const slot = container || el('wheel-wrap');
+    // Setup dựng wheel không có session: nhãn lấy từ st.label, không qua labelFor.
+    function nameOf(st) { return st.label != null ? st.label : labelFor(st.id); }
     slot.textContent = '';
     const size = 400, c = size / 2, r = size / 2 - 10;
     const svg = document.createElementNS(SVG_NS, 'svg');
@@ -677,7 +681,7 @@
       text.setAttribute('x', c);
       text.setAttribute('y', c);
       text.setAttribute('fill', contrastText(color));
-      text.textContent = labelFor(students[0].id);
+      text.textContent = nameOf(students[0]);
       rotor.appendChild(text);
     } else {
       const step = 360 / n;
@@ -698,7 +702,7 @@
           text.setAttribute('x', lp.x);
           text.setAttribute('y', lp.y);
           text.setAttribute('fill', contrastText(color));
-          text.textContent = labelFor(st.id);
+          text.textContent = nameOf(st);
           rotor.appendChild(text);
         }
       });

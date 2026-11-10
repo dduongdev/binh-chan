@@ -122,16 +122,21 @@
       </div>
 
       <div id="teach-setup" class="setup">
-        <p id="teach-summary" class="teach-summary"></p>
-        <label class="field">
-          <span>Student Names</span>
-          <textarea id="teach-students" rows="10" placeholder="Enter student names, one per line..."></textarea>
-        </label>
-        <p class="hint">Paste a list from a spreadsheet or type names on separate lines.</p>
-        <p id="setup-error" class="warn" hidden>Add at least one student to start.</p>
-        <div class="setup-foot">
-          <span id="teach-count">0 students</span>
-          <button id="btn-start-session" type="button" disabled>Start Session</button>
+        <div class="setup-form">
+          <p id="teach-summary" class="teach-summary"></p>
+          <label class="field">
+            <span>Student Names</span>
+            <textarea id="teach-students" rows="10" placeholder="Enter student names, one per line..."></textarea>
+          </label>
+          <p class="hint">Paste a list from a spreadsheet or type names on separate lines.</p>
+          <p id="setup-error" class="warn" hidden>Add at least one student to start.</p>
+          <div class="setup-foot">
+            <span id="teach-count">0 students</span>
+            <button id="btn-start-session" type="button" disabled>Start Session</button>
+          </div>
+        </div>
+        <div class="setup-wheel" aria-hidden="true">
+          <div id="setup-wheel" class="wheel-slot"></div>
         </div>
       </div>
 
