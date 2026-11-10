@@ -274,6 +274,10 @@
     p2.className = n > 0 ? 'yes' : '';
     p2.textContent = (n > 0 ? '\u2713 ' : '') + n + ' Key Evidence highlight' + (n === 1 ? '' : 's');
     box.append(p1, p2);
+
+    el('btn-clear-support').disabled = !supportOk;
+    el('btn-clear-keys').disabled = n === 0;
+    updateEvidenceButtons();
   }
 
   function currentQuestion() {
@@ -317,10 +321,165 @@
     updateValidity();
   }
 
-  // Xem trước khi ở chế độ Mark Evidence (Task 4 thay bằng dẫn chứng 2 cấp).
+  /* ---------------- EVD: dẫn chứng 2 cấp (SPEC §6.4, EVD-01..13) ---------------- */
+
+  // Dựng nội dung bằng text node + mark (không innerHTML) → an toàn XSS và
+  // container.textContent luôn bằng content (offset phụ thuộc điều này).
+  function renderPassage(container, content, support, keys) {
+    container.textContent = '';
+    const text = content || '';
+    Logic.passageSegments(text, support, keys).forEach(function (seg) {
+      const piece = text.slice(seg.startOffset, seg.endOffset);
+      if (seg.level === 'text') {
+        container.appendChild(document.createTextNode(piece));
+        return;
+      }
+      const mark = document.createElement('mark');
+      mark.textContent = piece;
+      if (seg.level === 'key') {
+        mark.className = 'mark-key';
+        mark.dataset.start = seg.startOffset;
+        mark.dataset.end = seg.endOffset;
+        mark.title = 'Remove Highlight';
+      } else {
+        mark.className = 'mark-support';
+      }
+      container.appendChild(mark);
+    });
+  }
+
+  function showError(message) {
+    const box = el('ed-error');
+    box.textContent = message;
+    box.hidden = false;
+  }
+
+  function clearError() {
+    const box = el('ed-error');
+    box.textContent = '';
+    box.hidden = true;
+  }
+
   function renderPreview() {
-    const preview = el('passage-preview');
-    preview.textContent = editing ? (editing.reading.content || '') : '';
+    if (!editing) return;
+    const q = currentQuestion();
+    renderPassage(
+      el('passage-preview'),
+      editing.reading.content || '',
+      q ? q.supportingPassage : null,
+      q ? q.keyEvidence : []
+    );
+    clearError();
+    updateEvidenceButtons();
+  }
+
+  // Vùng bôi đen trong passage-preview → offset UTF-16 nửa mở (không dùng indexOf).
+  function selectionOffsets() {
+    const container = el('passage-preview');
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    const range = sel.getRangeAt(0);
+    if (!container.contains(range.startContainer) || !container.contains(range.endContainer)) return null;
+    const pre = document.createRange();
+    pre.selectNodeContents(container);
+    pre.setEnd(range.startContainer, range.startOffset);
+    const start = pre.toString().length;
+    const end = start + range.toString().length;
+    if (start >= end) return null;
+    return { startOffset: start, endOffset: end };
+  }
+
+  // Trạng thái nút dẫn chứng theo vùng chọn hiện tại (EVD-05, EVD-06).
+  function updateEvidenceButtons() {
+    if (!editing || editing.mode !== 'mark' || el('view-editor').hidden) return;
+    const q = currentQuestion();
+    const off = selectionOffsets();
+    el('btn-set-support').disabled = !q || !off;
+    const sup = q && q.supportingPassage;
+    el('btn-key-evidence').disabled = !sup || !off || !Logic.containedIn(off, sup);
+    if (off && sup && !Logic.containedIn(off, sup)) {
+      showError('Select a phrase inside the Supporting Passage.');
+    } else if (off) {
+      clearError();
+    }
+  }
+
+  function setSupportingPassage() {
+    const q = currentQuestion();
+    const off = selectionOffsets();
+    if (!q || !off || editing.mode !== 'mark') return;
+    if (q.supportingPassage
+      && q.supportingPassage.startOffset === off.startOffset
+      && q.supportingPassage.endOffset === off.endOffset) return;
+    if (q.supportingPassage) {
+      if (!confirm('Changing the Supporting Passage will remove its Key Evidence highlights. Continue?')) return;
+      q.keyEvidence = [];
+    }
+    q.supportingPassage = off;
+    window.getSelection().removeAllRanges();
+    markDirty();
+    renderPreview();
+    renderEvidenceStatus();
+    updateValidity();
+  }
+
+  function addKeyEvidence() {
+    const q = currentQuestion();
+    const off = selectionOffsets();
+    if (!q || !off || editing.mode !== 'mark') return;
+    if (!q.supportingPassage) { showError('Select a phrase inside the Supporting Passage.'); return; }
+    if (!Logic.containedIn(off, q.supportingPassage)) {
+      showError('Select a phrase inside the Supporting Passage.');
+      return;
+    }
+    q.keyEvidence = Logic.mergeRanges(q.keyEvidence.concat([off]));
+    window.getSelection().removeAllRanges();
+    clearError();
+    markDirty();
+    renderPreview();
+    renderEvidenceStatus();
+    updateValidity();
+  }
+
+  function removeKeyEvidence(start, end) {
+    const q = currentQuestion();
+    if (!q) return;
+    q.keyEvidence = (q.keyEvidence || []).filter(function (r) {
+      return !(r.startOffset === start && r.endOffset === end);
+    });
+    markDirty();
+    renderPreview();
+    renderEvidenceStatus();
+    updateValidity();
+  }
+
+  function clearSupport() {
+    const q = currentQuestion();
+    if (!q || !q.supportingPassage) return;
+    if (!confirm('Clear the Supporting Passage and its Key Evidence?')) return;
+    q.supportingPassage = null;
+    q.keyEvidence = [];
+    markDirty();
+    renderPreview();
+    renderEvidenceStatus();
+    updateValidity();
+  }
+
+  function clearKeyEvidence() {
+    const q = currentQuestion();
+    if (!q || !(q.keyEvidence || []).length) return;
+    q.keyEvidence = [];
+    markDirty();
+    renderPreview();
+    renderEvidenceStatus();
+    updateValidity();
+  }
+
+  function onPreviewClick(e) {
+    if (editing.mode !== 'mark') return;
+    const mark = e.target.closest('mark.mark-key');
+    if (!mark) return;
+    removeKeyEvidence(Number(mark.dataset.start), Number(mark.dataset.end));
   }
 
   function markDirty() {
@@ -424,6 +583,12 @@
     });
     el('btn-mode-edit').addEventListener('click', function () { setMode('edit'); });
     el('btn-mode-mark').addEventListener('click', function () { setMode('mark'); });
+    el('btn-set-support').addEventListener('click', setSupportingPassage);
+    el('btn-key-evidence').addEventListener('click', addKeyEvidence);
+    el('btn-clear-support').addEventListener('click', clearSupport);
+    el('btn-clear-keys').addEventListener('click', clearKeyEvidence);
+    el('passage-preview').addEventListener('click', onPreviewClick);
+    document.addEventListener('selectionchange', updateEvidenceButtons);
     el('btn-add-question').addEventListener('click', addQuestion);
     el('btn-add-option').addEventListener('click', function () {
       const q = currentQuestion();

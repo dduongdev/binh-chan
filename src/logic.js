@@ -37,6 +37,33 @@
     return out;
   }
 
+  // Chia nội dung thành các đoạn liền mạch theo cấp dẫn chứng (key > support > text).
+  // Dùng để render: ghép các slice lại phải bằng đúng content (offset dựa vào đó).
+  function passageSegments(content, support, keys) {
+    const text = content || '';
+    const sup = validRange(support, text) ? support : null;
+    const keyRanges = mergeRanges((keys || []).filter(function (r) {
+      return validRange(r, text) && (!sup || containedIn(r, sup));
+    }));
+
+    const cuts = [0, text.length];
+    if (sup) cuts.push(sup.startOffset, sup.endOffset);
+    keyRanges.forEach(function (r) { cuts.push(r.startOffset, r.endOffset); });
+    const points = cuts.filter(function (v, i, a) { return a.indexOf(v) === i; })
+      .sort(function (a, b) { return a - b; });
+
+    const out = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      if (a >= b) continue;
+      const inKey = keyRanges.some(function (r) { return r.startOffset <= a && b <= r.endOffset; });
+      const inSup = !!sup && sup.startOffset <= a && b <= sup.endOffset;
+      out.push({ startOffset: a, endOffset: b, level: inKey ? 'key' : (inSup ? 'support' : 'text') });
+    }
+    return out;
+  }
+
   /* ---------------- students (SPEC §4.5, SPN-07) ---------------- */
 
   // Mỗi dòng một tên; bỏ dòng trống; cắt/gộp khoảng trắng; GIỮ trùng (khác id nội bộ).
@@ -151,6 +178,7 @@
     validRange: validRange,
     containedIn: containedIn,
     mergeRanges: mergeRanges,
+    passageSegments: passageSegments,
     parseStudentNames: parseStudentNames,
     disambiguate: disambiguate,
     validatePassage: validatePassage,

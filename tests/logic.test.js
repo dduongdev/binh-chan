@@ -30,6 +30,27 @@ test('validRange: half-open bounds inside content', function () {
   assert.strictEqual(Logic.validRange({ startOffset: 0, endOffset: 5 }, 'abcd'), false);
 });
 
+test('passageSegments: key beats support, contiguous slices rebuild the content exactly', function () {
+  const content = 'Hello world';
+  const segs = Logic.passageSegments(content, { startOffset: 0, endOffset: 11 }, [{ startOffset: 0, endOffset: 5 }]);
+  assert.deepStrictEqual(segs, [
+    { startOffset: 0, endOffset: 5, level: 'key' },
+    { startOffset: 5, endOffset: 11, level: 'support' }
+  ]);
+  assert.strictEqual(segs.map(function (s) { return content.slice(s.startOffset, s.endOffset); }).join(''), content);
+
+  // Key evidence outside the supporting passage is ignored.
+  const outside = Logic.passageSegments(content, { startOffset: 6, endOffset: 11 }, [{ startOffset: 0, endOffset: 5 }]);
+  assert.deepStrictEqual(outside, [
+    { startOffset: 0, endOffset: 6, level: 'text' },
+    { startOffset: 6, endOffset: 11, level: 'support' }
+  ]);
+
+  // Invalid support → plain text.
+  assert.deepStrictEqual(Logic.passageSegments('abc', { startOffset: 0, endOffset: 9 }, []),
+    [{ startOffset: 0, endOffset: 3, level: 'text' }]);
+});
+
 test('validatePassage: ready only with support + key evidence inside it', function () {
   const base = {
     title: 'T', content: 'Hello world',
