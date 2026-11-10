@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Teaching Setup (`SET-01`) becomes two columns — a narrower name-entry form on the left and a decorative, continuously rotating wheel preview on the right — then bring `UI_SPEC` in line with it.
+**Goal:** Teaching Setup (`SET-01`) becomes two equal halves — a name-entry form on the left and a decorative, continuously rotating wheel preview on the right — then bring `UI_SPEC` in line with it.
 
 **Architecture:** Presentation only. One new static `<div>` in `index.html`, one CSS grid for `.setup`, and one line in `updateSetup()` that redraws the existing SVG wheel into the preview slot. `buildWheelSVG` gains an optional `container` argument and reads a student's display label from `st.label` when the caller supplies one (the setup screen has no session, so `labelFor` cannot resolve names there). The animation lives on the slot, not on the SVG's `.wheel-rotor`, because the SVG is rebuilt on every keystroke — rotating the slot keeps the spin continuous instead of restarting at 0° per character. `MVP_SPEC` needs no change: `SET-01`/AC-10 specify name entry and counting, not layout.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- No id may be added, removed or renamed in `index.html`; `src/app.js` is modified only inside `updateSetup` and `buildWheelSVG`.
+- No existing id may be removed or renamed in `index.html`, and no id that `src/app.js` already looks up may change; this change adds exactly one new id, `setup-wheel`. `src/app.js` is modified only inside `updateSetup` and `buildWheelSVG`.
 - The preview must never look like a result: no pointer, no highlighted or selected name, `aria-hidden="true"`.
 - No new library and no second drawing routine — `buildWheelSVG` is reused.
 - Evidence rules, session behaviour, name parsing and counting are untouched.
@@ -190,7 +190,7 @@ git commit -m "feat(setup): two-column name entry with a decorative spinning whe
 Add after the "Primary CTA" bullet:
 
 ```markdown
-- Right column: a decorative wheel **preview** of the entered names, slowly rotating with no pointer and no selected name; it is not the teaching wheel and never shows a result.
+- Right half: a decorative wheel **preview** of the entered names, slowly rotating with no pointer and no selected name; it is not the teaching wheel and never shows a result. Hovering the preview pauses it (WCAG 2.2.2).
 ```
 
 - [ ] **Step 2: §4.3 Layout principles**

@@ -345,6 +345,7 @@ Prepare a classroom session in one short step, without accounts or class adminis
 
 - Two equal halves above 940 px: the name form on the left and the wheel preview on the right, the pair capped at about 1000 px.
 - The preview fills its half and is clipped to that column: a rotating square is wider than its own box, and a decorative preview must never add a horizontal scrollbar. The wheel disc is inscribed in the square, so nothing of the wheel itself is cut.
+- Hovering the preview pauses it; the preview is static for users who ask for reduced motion.
 - The preview follows typing: it redraws as names are added or removed, including duplicate disambiguation like `Alex Kim (2)`. An empty list shows a plain grey disc.
 - Below 940 px the form stacks above the preview.
 - Use a cheerful, subtle heading graphic or colored icon, not a dense dashboard.
@@ -526,7 +527,7 @@ A restrained celebratory color accent is appropriate; the screen should stay cal
 | `QuestionForm` | Prompt, variable answer options, one correct radio, evidence status. |
 | `StudentNamesInput` | Multiline paste, live valid-name count, simple errors. |
 | `StudentWheel` | Random outcome, animated spin, selected result, current roster awareness. |
-| `SetupWheelPreview` | Decorative only, on Teaching Setup: continuously rotating, one segment per entered name, no pointer, no selected name, updates while typing, static under reduced motion. |
+| `SetupWheelPreview` | Decorative only, on Teaching Setup: continuously rotating, one segment per entered name, pauses on hover, no pointer, no selected name, updates while typing, static under reduced motion. |
 | `SelectedStudentActions` | **Keep**, **Remove**, **Spin Again**; explicit consequences. |
 | `TeachingQuestionPanel` | Read-only options before reveal, one highlighted correct option after reveal. |
 | `TeachingProgress` | **Question X of Y** with minimal optional progress bar. |

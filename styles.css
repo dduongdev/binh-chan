@@ -410,8 +410,12 @@ input:focus, textarea:focus {
   /* Hộp bao của khối vuông khi xoay 45° rộng gấp 1,41 lần -> cắt để không sinh thanh cuộn ngang. */
   overflow: hidden;
 }
+/* Bóng đổ của .wheel nằm trong khối đang xoay: hướng bóng quay theo và bị cắt ở mép hộp. */
+#setup-wheel .wheel { filter: none; }
 /* Vòng quay đặt trên khung chứa, không trên SVG: SVG bị dựng lại mỗi lần gõ tên. */
 #setup-wheel { animation: setup-wheel-spin 20s linear infinite; }
+/* WCAG 2.2.2: chuyển động tự chạy phải dừng được. */
+#setup-wheel:hover { animation-play-state: paused; }
 @keyframes setup-wheel-spin { to { transform: rotate(360deg); } }
 .teach-summary { margin: 0 0 18px; color: var(--muted); font-weight: 600; }
 #teach-count { font-weight: 600; color: var(--ink-2); }
@@ -579,4 +583,5 @@ input:focus, textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: .001ms !important; animation-duration: .001ms !important; }
+  #setup-wheel { animation: none; }
 }

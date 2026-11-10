@@ -6,7 +6,7 @@
 
 ## Intent and why
 
-The Teaching Setup screen (`SET-01`) is a single centered column: reading summary, student-name textarea, counter, Start Session. The teacher cannot see the wheel until the session starts.
+The Teaching Setup screen (`SET-01`) is a single column capped at 700 px: reading summary, student-name textarea, counter, Start Session. The teacher cannot see the wheel until the session starts.
 
 The partner wants a wheel preview on the right — gently spinning, no Spin button — so the screen shows what the names turn into, and feels lively.
 
@@ -59,8 +59,10 @@ The partner wants a wheel preview on the right — gently spinning, no Spin butt
 - `.setup` becomes `max-width: 1000px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;` (two equal halves, per the partner at execution time); the existing `@media (max-width: 940px)` block adds `.setup { display: block; }` and `.setup-wheel { margin-top: 22px; }`.
 - `.setup-wheel { width: 100%; aspect-ratio: 1; overflow: hidden; }` — the slot fills its half, and the container clips the rotated bounding box (a square rotated 45° is ×1.41 wide) so the spinning preview never adds a horizontal scrollbar. The disc is inscribed in the square, so nothing of the wheel itself is clipped.
 - `#setup-wheel { animation: setup-wheel-spin 20s linear infinite; }` plus `@keyframes setup-wheel-spin { to { transform: rotate(360deg); } }`.
+- `#setup-wheel:hover { animation-play-state: paused; }` — a stop mechanism for auto-starting motion (WCAG 2.2.2).
+- `#setup-wheel .wheel { filter: none; }` — the shared drop shadow sits inside the rotating box, so its direction orbits and its blur is hard-clipped at the container edge; the preview drops it.
 - The animation lives on the **slot**, not on the SVG's `.wheel-rotor`: the SVG is rebuilt on every keystroke, and rotating the slot keeps the spin continuous instead of restarting it at 0° per character.
-- `prefers-reduced-motion` is already handled globally (`styles.css` reduces every animation to .001ms), so the preview is static for those users with no extra code.
+- `prefers-reduced-motion` adds `#setup-wheel { animation: none }` to the existing global block, so the preview is genuinely static and the compositor has nothing to tick.
 
 **Behaviour (`src/app.js`)**
 
@@ -69,7 +71,7 @@ The partner wants a wheel preview on the right — gently spinning, no Spin butt
 
 **Documents**
 
-- `docs/UI_SPEC.md` §4.3: add the preview to Structure and Layout principles — right column, decorative, slowly rotating, no pointer, no selected name, static under reduced motion, and it reacts to typing.
+- `docs/UI_SPEC.md` §4.3: add the preview to Structure and Layout principles — right half, decorative, slowly rotating, pausable on hover, no pointer, no selected name, static under reduced motion, and it reacts to typing.
 - `docs/UI_SPEC.md` §5: `StudentWheel` row mentions the decorative preview on Teaching Setup.
 - `docs/UI_SPEC.md` §6.2: reduced motion note covers the preview.
 - `docs/MVP_SPEC.md`: no change — `SET-01` requirements and AC-10 describe name entry and counting, not layout.
