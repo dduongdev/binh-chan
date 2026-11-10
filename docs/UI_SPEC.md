@@ -424,25 +424,27 @@ Support a teacher-led verbal answer while keeping all hints concealed.
 
 ### Layout
 
-Desktop split view with the reading on the left and active question on the right:
+Desktop stacked layout: the full-width reading passage sits on top, the active question beneath it:
 
-- Left (approximately 55–60%): **Reading Passage** in a calm, white panel; full original text, generous line spacing, scrollable for long readings.
-- Right (approximately 40–45%): selected student name, **Question 1 of 5**, the question, and visible answer options.
-- Bottom right: one large primary button **Reveal Answer**.
+- Top (full content width): **Reading Passage** in a calm, white panel; full original text, generous line spacing, page-scrolled for long readings.
+- Below it: selected student name, the question, and visible answer options.
+- Bottom of the viewport: one large primary button **Reveal Answer**, in a bar pinned to the viewport edge so it never scrolls away.
 
 ```text
-┌──────────────────────────────────┬──────────────────────────────┐
-│ READING PASSAGE                  │ Emma Johnson                 │
-│                                  │ Question 1 of 5              │
-│ Anna wanted to visit the park... │                              │
-│ However, it was raining          │ Why did Anna stay at home?   │
-│ heavily, so she decided...       │                              │
-│                                  │ ○ She felt tired.            │
-│ [ordinary unhighlighted text]    │ ○ It was raining heavily.    │
-│                                  │ ○ She forgot her bag.        │
-│                                  │                              │
-│                                  │ [    Reveal Answer    ]      │
-└──────────────────────────────────┴──────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ Question 1 of 5                                                  │
+│ ┌──────────────────────────────────────────────────────────────┐ │
+│ │ READING PASSAGE                                              │ │
+│ │ Anna wanted to visit the park...                             │ │
+│ │ However, it was raining heavily, so she decided...           │ │
+│ │ [ordinary unhighlighted text]                                │ │
+│ └──────────────────────────────────────────────────────────────┘ │
+│ Emma Johnson                                                     │
+│ Why did Anna stay at home?                                       │
+│ ○ She felt tired.   ○ It was raining heavily.   ○ She forgot…    │
+├──────────────────────────────────────────────────────────────────┤
+│                                             [   Reveal Answer  ] │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Rules
@@ -452,7 +454,7 @@ Desktop split view with the reading on the left and active question on the right
 - Answer choices are presentation items, not student-submitted interactive votes.
 - Keep the selected student's name visible, but visually subordinate to the question.
 - Show the full passage; do not replace it with the excerpt alone.
-- For long passages, allow independent reading-pane scrolling without moving action buttons off screen.
+- For long passages the page scrolls; the action bar stays pinned to the bottom of the viewport.
 - All important controls must be reachable by mouse and keyboard.
 
 ---
@@ -466,7 +468,7 @@ Make the reasoning behind the correct answer instantly visible on a projector.
 ### Changes from Before Reveal
 
 1. The correct option receives a clear green-tinted background, check icon, and **Correct Answer** label.
-2. The question's **Supporting Passage**, when one is set, is shaded pale yellow in the reading panel.
+2. The question's **Supporting Passage**, when one is set, is shaded pale yellow in the full-width passage panel at the top.
 3. The question's **Key Evidence** words/phrases are shown with orange-gold emphasis and bold text, on top of the pale yellow background when they overlap the Supporting Passage.
 4. Evidence associated with other questions stays hidden.
 5. The primary CTA changes to **Next Question**, or **Finish Lesson** for the final question.
@@ -565,11 +567,11 @@ When `prefers-reduced-motion` is enabled:
 
 | Width | Layout |
 | --- | --- |
-| `>= 1200 px` | Two-column Editor and Teaching Question layout; library 2–3 cards across. |
-| `768–1199 px` | Two-column where practical; narrower question panel; possible stacked editor sections on tablet portrait. |
-| `< 768 px` | Single-column stack; all buttons and inputs remain usable; evidence can be selected with browser-native touch selection when supported. |
+| `>= 1200 px` | Two-column Editor layout; stacked Teaching Question layout with a pinned action bar; library 2–3 cards across. |
+| `768–1199 px` | Two-column where practical (Editor); stacked Teaching Question layout; possible stacked editor sections on tablet portrait. |
+| `< 768 px` | Single-column stack; all buttons and inputs remain usable; the teaching action bar stays pinned; evidence can be selected with browser-native touch selection when supported. |
 
-On smaller viewports, prioritize working functionality over trying to preserve the desktop split at unreadable widths.
+On smaller viewports, prioritize working functionality over trying to preserve the two-column editor at unreadable widths. The teaching question is stacked at every width.
 
 ### 7.2 Full-screen teaching
 
