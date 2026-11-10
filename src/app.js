@@ -268,6 +268,8 @@
     box.textContent = '';
     if (!q) {
       box.textContent = 'Add a question to attach evidence.';
+      el('btn-clear-support').disabled = true;
+      el('btn-clear-keys').disabled = true;
       return;
     }
     const p1 = document.createElement('p');
@@ -426,8 +428,10 @@
   function removeKeyEvidence(start, end) {
     const q = currentQuestion();
     if (!q) return;
+    // Một vùng key có thể bị cắt thành nhiều mark khi vượt biên Supporting Passage,
+    // nên xoá theo chứa đựng (các vùng đã gộp nên không chồng lấn).
     q.keyEvidence = (q.keyEvidence || []).filter(function (r) {
-      return !(r.startOffset === start && r.endOffset === end);
+      return !(r.startOffset <= start && r.endOffset >= end);
     });
     markDirty();
     renderPreview();

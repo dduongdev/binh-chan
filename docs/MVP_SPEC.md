@@ -173,7 +173,7 @@ For MVP, each question may have **one optional Supporting Passage region** and *
 | ID | Requirement |
 | --- | --- |
 | `EVD-01` | Teachers select a question, then select text directly in the Original Passage. |
-| `EVD-02` | A small contextual action **Set Supporting Passage** appears for a valid passage selection. |
+| `EVD-02` | The **Set Supporting Passage** action appears under the active question for a valid passage selection. |
 | `EVD-03` | The selected region is stored as that question's Supporting Passage and shown with a subtle background highlight. |
 | `EVD-04` | Teachers select words/phrases anywhere in the Original Passage and choose **Highlight Key Evidence**; a Supporting Passage is not required. |
 | `EVD-05` | Key Evidence receives a stronger visual treatment than the surrounding text, and than an overlapping Supporting Passage. |

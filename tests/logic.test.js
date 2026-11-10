@@ -53,6 +53,16 @@ test('passageSegments: key beats support, contiguous slices rebuild the content 
     { startOffset: 5, endOffset: 11, level: 'text' }
   ]);
 
+  // A key range crossing the support boundary splits into two key slices, so a
+  // click on one slice must still remove the stored range.
+  const crossing = Logic.passageSegments(content, { startOffset: 3, endOffset: 9 }, [{ startOffset: 0, endOffset: 6 }]);
+  assert.deepStrictEqual(crossing, [
+    { startOffset: 0, endOffset: 3, level: 'key' },
+    { startOffset: 3, endOffset: 6, level: 'key' },
+    { startOffset: 6, endOffset: 9, level: 'support' },
+    { startOffset: 9, endOffset: 11, level: 'text' }
+  ]);
+
   // Invalid support → plain text.
   assert.deepStrictEqual(Logic.passageSegments('abc', { startOffset: 0, endOffset: 9 }, []),
     [{ startOffset: 0, endOffset: 3, level: 'text' }]);

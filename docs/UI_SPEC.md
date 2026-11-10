@@ -466,8 +466,8 @@ Make the reasoning behind the correct answer instantly visible on a projector.
 ### Changes from Before Reveal
 
 1. The correct option receives a clear green-tinted background, check icon, and **Correct Answer** label.
-2. The question's **Supporting Passage** is shaded pale yellow in the reading panel.
-3. The question's **Key Evidence** words/phrases inside it are shown with orange-gold emphasis and bold text.
+2. The question's **Supporting Passage**, when one is set, is shaded pale yellow in the reading panel.
+3. The question's **Key Evidence** words/phrases are shown with orange-gold emphasis and bold text, on top of the pale yellow background when they overlap the Supporting Passage.
 4. Evidence associated with other questions stays hidden.
 5. The primary CTA changes to **Next Question**, or **Finish Lesson** for the final question.
 
@@ -482,7 +482,7 @@ Use a small optional legend only if clarity needs it: **Supporting Passage** and
 
 ### Interaction
 
-- A single click on **Reveal Answer** causes both levels of evidence and the correct answer to appear together.
+- A single click on **Reveal Answer** causes the correct answer and the question's evidence to appear together: the Supporting Passage if one is set, plus every Key Evidence range.
 - Do not animate highlights in an elaborate or distracting way. A quick fade of around 150–250 ms is sufficient.
 - Click **Next Question** to reset all evidence/answer styling and return to the wheel for the next student.
 
