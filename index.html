@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReadingFlow — Reading lesson tools</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="brand">ReadingFlow</h1>
+    <button id="btn-fullscreen" class="ghost" type="button">Fullscreen</button>
+  </header>
+
+  <main>
+    <!-- SCR-01: Reading library -->
+    <section id="view-library" class="view">
+      <div class="view-head">
+        <h2>Reading library</h2>
+        <button id="btn-new-passage" type="button">New passage</button>
+      </div>
+      <ul id="passage-list" class="passage-list"></ul>
+      <p id="library-empty" class="empty">No passages yet. Create your first one to get started.</p>
+    </section>
+
+    <!-- SCR-02: Passage editor -->
+    <section id="view-editor" class="view" hidden>
+      <div class="view-head">
+        <h2>Edit passage</h2>
+        <div class="head-actions">
+          <button id="btn-editor-back" class="ghost" type="button">&larr; Library</button>
+          <button id="btn-editor-save" type="button">Save</button>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Title</span>
+        <input id="ed-title" type="text" placeholder="e.g. Anna and the rainy day">
+      </label>
+
+      <label class="field">
+        <span>Passage text</span>
+        <textarea id="ed-content" rows="5" placeholder="Type or paste the reading passage…"></textarea>
+      </label>
+
+      <div class="editor-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Passage</h3>
+            <div class="toolbar">
+              <button id="btn-mark" type="button" disabled>Mark evidence</button>
+              <button id="btn-unmark" class="ghost" type="button" disabled>Remove mark</button>
+            </div>
+          </div>
+          <p class="hint panel-note">Select text in the passage, then choose <b>Mark evidence</b>.</p>
+          <div id="passage-preview" class="passage"></div>
+          <p class="hint">Evidence shown for: <b id="ed-current-q">—</b></p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Questions</h3>
+            <button id="btn-add-question" type="button">Add question</button>
+          </div>
+          <ol id="question-list" class="question-list"></ol>
+        </div>
+      </div>
+
+      <div class="editor-foot">
+        <span id="ed-status" class="status"></span>
+        <span id="ed-valid" class="status"></span>
+      </div>
+    </section>
+
+    <!-- SCR-03: Teaching room -->
+    <section id="view-teaching" class="view" hidden>
+      <div class="view-head">
+        <h2 id="teach-title">Teaching room</h2>
+        <button id="btn-teach-exit" class="ghost" type="button">&larr; Library</button>
+      </div>
+
+      <div id="teach-setup" class="setup">
+        <label class="field">
+          <span>Students (one per line)</span>
+          <textarea id="teach-students" rows="8" placeholder="One student name per line"></textarea>
+        </label>
+        <p id="teach-dupes" class="warn"></p>
+        <div class="setup-foot">
+          <span id="teach-count">0 students</span>
+          <button id="btn-teach-start" type="button" disabled>Start session</button>
+        </div>
+      </div>
+
+      <div id="teach-session" hidden>
+        <div class="teach-top">
+          <span id="teach-progress"></span>
+          <span id="teach-status" class="status"></span>
+        </div>
+        <div class="teach-grid">
+          <div class="panel">
+            <div id="teach-passage" class="passage passage-big"></div>
+          </div>
+          <div class="panel">
+            <div id="teach-question" class="teach-question"></div>
+            <div class="spin">
+              <div id="spin-name" class="spin-name">—</div>
+              <div class="spin-actions">
+                <button id="btn-spin" type="button">Spin</button>
+                <button id="btn-reveal" class="ghost" type="button">Reveal answer</button>
+                <button id="btn-next" class="ghost" type="button">Next question</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="src/logic.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>

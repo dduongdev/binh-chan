@@ -1,0 +1,7 @@
+.env
+.env.*
+!.env.example
+
+opencode.json
+.opencode/node_modules/
+.superpowers/
