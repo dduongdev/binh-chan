@@ -11,6 +11,8 @@
   let readings = [];
   // { reading, questionIndex, mode: 'edit'|'mark', dirty, baselineContent }
   let editing = null;
+  // { reading, names, labels, state, spinning, spinToken }
+  let session = null;
 
   /* ---------------- storage ---------------- */
 
@@ -476,7 +478,7 @@
   }
 
   function onPreviewClick(e) {
-    if (editing.mode !== 'mark') return;
+    if (!editing || editing.mode !== 'mark') return;
     const mark = e.target.closest('mark.mark-key');
     if (!mark) return;
     removeKeyEvidence(Number(mark.dataset.start), Number(mark.dataset.end));
@@ -532,8 +534,8 @@
   }
 
   function saveEditor() {
-    if (!editing) return;
-    if (!reconcileContent()) return;
+    if (!editing) return false;
+    if (!reconcileContent()) return false;
     const r = editing.reading;
     syncOrders(r);
     r.updatedAt = Date.now();
@@ -543,6 +545,7 @@
     editing.dirty = false;
     el('ed-status').textContent = 'Reading saved';
     updateValidity();
+    return true;
   }
 
   function leaveEditor() {
@@ -552,15 +555,254 @@
     showView('library');
   }
 
-  /* ---------------- SET + TCH: teaching (Task 5) ---------------- */
+  /* ---------------- SET + TCH: teaching (SPEC §4.5, §7) ---------------- */
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const WHEEL_PALETTE = ['#168FA4', '#53B8E8', '#F47768', '#F4C95D', '#66BD8A', '#A997DF', '#F7AD4A'];
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function labelFor(id) {
+    if (!session || !session.state) return '';
+    const i = session.state.students.findIndex(function (s) { return s.id === id; });
+    return i >= 0 ? session.labels[i] : '';
+  }
 
   function beginTeaching(id) {
     const src = readings.find(function (r) { return r.id === id; });
     if (!src) return;
     const v = Logic.validatePassage(src);
     if (!v.ready) { alert(v.problems.join('\n')); return; }
+    session = { reading: clone(src), names: [], labels: [], state: null, spinning: false, spinToken: 0 };
+    editing = null;
     el('teach-title').textContent = src.title || 'Start Teaching';
+    el('teach-summary').textContent = (src.title || '(Untitled)') + ' \u00b7 '
+      + src.questions.length + (src.questions.length === 1 ? ' question' : ' questions');
+    el('teach-students').value = '';
+    updateSetup();
+    el('teach-setup').hidden = false;
+    el('teach-session').hidden = true;
     showView('teaching');
+    el('teach-students').focus();
+  }
+
+  function updateSetup() {
+    const raw = el('teach-students').value;
+    const names = Logic.parseStudentNames(raw);
+    el('teach-count').textContent = names.length + (names.length === 1 ? ' student' : ' students');
+    el('setup-error').hidden = names.length > 0 || raw.length === 0;
+    el('btn-start-session').disabled = names.length < 1;
+  }
+
+  function startSession() {
+    const names = Logic.parseStudentNames(el('teach-students').value);
+    if (names.length < 1) { el('setup-error').hidden = false; return; }
+    session.names = names;
+    session.labels = Logic.disambiguate(names);
+    session.state = {
+      phase: 'spin',
+      questionIndex: 0,
+      questionCount: session.reading.questions.length,
+      students: names.map(function (n) { return { id: Logic.newId(), name: n, isActive: true }; }),
+      selectedStudentId: null
+    };
+    session.spinning = false;
+    el('teach-setup').hidden = true;
+    el('teach-session').hidden = false;
+    renderSession();
+  }
+
+  function renderSession() {
+    const s = session.state;
+    el('teach-progress').textContent = 'Question ' + (s.questionIndex + 1) + ' of ' + s.questionCount;
+    el('stage-spin').hidden = s.phase !== 'spin';
+    el('stage-selected').hidden = s.phase !== 'selected';
+    el('stage-question').hidden = s.phase !== 'question' && s.phase !== 'revealed';
+    el('stage-done').hidden = s.phase !== 'completed';
+
+    if (s.phase === 'spin') renderSpinStage();
+    else if (s.phase === 'selected') el('sel-name').textContent = labelFor(s.selectedStudentId);
+    else if (s.phase === 'question' || s.phase === 'revealed') renderQuestionStage(s.phase === 'revealed');
+    else if (s.phase === 'completed') {
+      el('done-count').textContent = "You've finished all " + s.questionCount + ' questions.';
+    }
+  }
+
+  function renderSpinStage() {
+    const active = session.state.students.filter(function (s) { return s.isActive; });
+    const empty = active.length === 0;
+    el('spin-roster').textContent = active.length
+      + (active.length === 1 ? ' student on the wheel' : ' students on the wheel');
+    el('spin-roster').hidden = empty;
+    el('spin-empty').hidden = !empty;
+    el('btn-spin').hidden = empty;
+    el('btn-spin').disabled = empty;
+    buildWheelSVG(active);
+  }
+
+  function polar(cx, cy, r, deg) {
+    const rad = (deg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  function contrastText(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return lum > 0.62 ? '#203548' : '#ffffff';
+  }
+
+  function buildWheelSVG(students) {
+    const slot = el('wheel-wrap');
+    slot.textContent = '';
+    const size = 400, c = size / 2, r = size / 2 - 10;
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+    svg.setAttribute('class', 'wheel');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Student selection wheel');
+
+    const rotor = document.createElementNS(SVG_NS, 'g');
+    rotor.setAttribute('class', 'wheel-rotor');
+    svg.appendChild(rotor);
+
+    const n = students.length;
+    if (n === 0) {
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', c); circle.setAttribute('cy', c); circle.setAttribute('r', r);
+      circle.setAttribute('fill', '#e8eaef');
+      rotor.appendChild(circle);
+    } else if (n === 1) {
+      const color = WHEEL_PALETTE[0];
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', c); circle.setAttribute('cy', c); circle.setAttribute('r', r);
+      circle.setAttribute('fill', color);
+      rotor.appendChild(circle);
+      const text = document.createElementNS(SVG_NS, 'text');
+      text.setAttribute('class', 'wheel-label');
+      text.setAttribute('x', c);
+      text.setAttribute('y', c);
+      text.setAttribute('fill', contrastText(color));
+      text.textContent = labelFor(students[0].id);
+      rotor.appendChild(text);
+    } else {
+      const step = 360 / n;
+      students.forEach(function (st, i) {
+        const deg0 = i * step, deg1 = (i + 1) * step;
+        const p0 = polar(c, c, r, deg0), p1 = polar(c, c, r, deg1);
+        const color = WHEEL_PALETTE[i % WHEEL_PALETTE.length];
+        const path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('d', 'M ' + c + ' ' + c + ' L ' + p0.x + ' ' + p0.y
+          + ' A ' + r + ' ' + r + ' 0 ' + (step > 180 ? 1 : 0) + ' 1 ' + p1.x + ' ' + p1.y + ' Z');
+        path.setAttribute('fill', color);
+        rotor.appendChild(path);
+
+        if (n <= 12) {
+          const lp = polar(c, c, r * 0.62, (deg0 + deg1) / 2);
+          const text = document.createElementNS(SVG_NS, 'text');
+          text.setAttribute('class', 'wheel-label');
+          text.setAttribute('x', lp.x);
+          text.setAttribute('y', lp.y);
+          text.setAttribute('fill', contrastText(color));
+          text.textContent = labelFor(st.id);
+          rotor.appendChild(text);
+        }
+      });
+    }
+    slot.appendChild(svg);
+  }
+
+  function spin() {
+    if (!session || !session.state || session.state.phase !== 'spin' || session.spinning) return;
+    const active = session.state.students.filter(function (s) { return s.isActive; });
+    if (active.length === 0) return;
+    const idx = Logic.pickIndex(active.length);
+    const winner = active[idx];
+    const step = 360 / active.length;
+    const jitter = (Math.random() - 0.5) * Math.max(step - 6, 0);
+    const target = Logic.wheelRotation(idx, active.length, jitter);
+
+    session.spinning = true;
+    const token = ++session.spinToken;
+    el('btn-spin').disabled = true;
+
+    const rotor = prefersReducedMotion() ? null : el('wheel-wrap').querySelector('.wheel-rotor');
+    if (rotor) {
+      rotor.style.transition = 'transform 3s cubic-bezier(.17,.67,.24,1)';
+      rotor.style.transform = 'rotate(' + target + 'deg)';
+    }
+    const finish = function () {
+      if (!session || token !== session.spinToken) return;
+      session.spinning = false;
+      session.state = Logic.reduce(session.state, { type: 'SPIN', winnerId: winner.id });
+      renderSession();
+    };
+    if (rotor) setTimeout(finish, 3050); else finish();
+  }
+
+  function renderQuestionStage(revealed) {
+    const s = session.state;
+    const q = session.reading.questions[s.questionIndex];
+    el('teach-student').textContent = labelFor(s.selectedStudentId) + ' is answering';
+    renderPassage(el('teach-passage'), session.reading.content || '',
+      revealed ? q.supportingPassage : null,
+      revealed ? q.keyEvidence : []);
+
+    const box = el('teach-question');
+    box.textContent = '';
+    const prompt = document.createElement('p');
+    prompt.className = 'teach-q-content';
+    prompt.textContent = q.prompt || '';
+    const ul = document.createElement('ul');
+    ul.className = 'teach-options';
+    (q.options || []).forEach(function (o) {
+      const li = document.createElement('li');
+      li.textContent = o.text || '';
+      if (revealed && o.id === q.correctOptionId) {
+        li.classList.add('correct');
+        const label = document.createElement('span');
+        label.className = 'correct-label';
+        label.textContent = 'Correct Answer';
+        li.appendChild(label);
+      }
+      ul.appendChild(li);
+    });
+    box.append(prompt, ul);
+
+    el('btn-reveal').hidden = revealed;
+    el('btn-next').hidden = !revealed;
+    el('btn-next').textContent = s.questionIndex >= s.questionCount - 1 ? 'Finish Lesson' : 'Next Question';
+  }
+
+  function applyAction(action) {
+    if (!session || !session.state) return;
+    session.state = Logic.reduce(session.state, action);
+    renderSession();
+  }
+
+  function spinAgain() {
+    if (!session || !session.state || session.state.phase !== 'selected') return;
+    const active = session.state.students.filter(function (s) { return s.isActive; });
+    if (active.length === 0) return;
+    applyAction({ type: 'SPIN_AGAIN', winnerId: active[Logic.pickIndex(active.length)].id });
+  }
+
+  function teachAgain() {
+    if (!session) return;
+    const names = session.names.join('\n');
+    beginTeaching(session.reading.id);
+    el('teach-students').value = names;
+    updateSetup();
+  }
+
+  function exitTeaching() {
+    if (session && session.state && session.state.phase !== 'completed'
+      && !confirm('Exit the lesson in progress?')) return;
+    session = null;
+    editing = null;
+    renderLibrary();
+    showView('library');
   }
 
   /* ---------------- khởi tạo ---------------- */
@@ -578,7 +820,7 @@
     el('btn-editor-save').addEventListener('click', saveEditor);
     el('btn-editor-teach').addEventListener('click', function () {
       if (!editing) return;
-      saveEditor();
+      if (!saveEditor()) return;
       beginTeaching(editing.reading.id);
     });
     el('btn-mode-edit').addEventListener('click', function () { setMode('edit'); });
@@ -587,6 +829,10 @@
     el('btn-key-evidence').addEventListener('click', addKeyEvidence);
     el('btn-clear-support').addEventListener('click', clearSupport);
     el('btn-clear-keys').addEventListener('click', clearKeyEvidence);
+    // Giữ vùng bôi đen khi bấm nút (mousedown mặc định sẽ xóa selection).
+    ['btn-set-support', 'btn-key-evidence'].forEach(function (id) {
+      el(id).addEventListener('mousedown', function (e) { e.preventDefault(); });
+    });
     el('passage-preview').addEventListener('click', onPreviewClick);
     document.addEventListener('selectionchange', updateEvidenceButtons);
     el('btn-add-question').addEventListener('click', addQuestion);
@@ -602,11 +848,18 @@
     el('btn-move-down').addEventListener('click', function () { moveQuestion(1); });
     el('btn-delete-question').addEventListener('click', deleteQuestion);
     el('btn-fullscreen').addEventListener('click', toggleFullscreen);
-    el('btn-teach-exit').addEventListener('click', function () {
-      editing = null;
-      renderLibrary();
-      showView('library');
-    });
+    el('btn-teach-exit').addEventListener('click', exitTeaching);
+    el('teach-students').addEventListener('input', updateSetup);
+    el('btn-start-session').addEventListener('click', startSession);
+    el('btn-spin').addEventListener('click', spin);
+    el('btn-spin-again').addEventListener('click', spinAgain);
+    el('btn-keep').addEventListener('click', function () { applyAction({ type: 'KEEP' }); });
+    el('btn-remove').addEventListener('click', function () { applyAction({ type: 'REMOVE' }); });
+    el('btn-restore').addEventListener('click', function () { applyAction({ type: 'RESTORE' }); });
+    el('btn-reveal').addEventListener('click', function () { applyAction({ type: 'REVEAL' }); });
+    el('btn-next').addEventListener('click', function () { applyAction({ type: 'NEXT' }); });
+    el('btn-teach-again').addEventListener('click', teachAgain);
+    el('btn-back-library').addEventListener('click', exitTeaching);
 
     el('lib-search').addEventListener('input', renderLibrary);
     el('ed-title').addEventListener('input', function () {

@@ -133,6 +133,12 @@
     return Math.floor(r * poolSize);
   }
 
+  // Góc quay (độ) đưa tâm ô `index` về đỉnh kim chỉ; 4 vòng cho có cảm giác quay.
+  function wheelRotation(index, count, jitter) {
+    const mid = (index + 0.5) * (360 / count);
+    return 360 * 4 + (360 - mid) + (jitter || 0);
+  }
+
   /* ---------------- session state machine (SPEC §7) ---------------- */
 
   function reduce(state, action) {
@@ -183,6 +189,7 @@
     disambiguate: disambiguate,
     validatePassage: validatePassage,
     pickIndex: pickIndex,
+    wheelRotation: wheelRotation,
     reduce: reduce
   };
 

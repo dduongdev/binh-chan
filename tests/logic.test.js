@@ -76,6 +76,22 @@ test('pickIndex: uniform range and -1 when empty', function () {
   assert.strictEqual(Logic.pickIndex(0), -1);
 });
 
+test('wheelRotation: the winner sector stops under the top pointer', function () {
+  [1, 2, 5, 7, 12].forEach(function (count) {
+    const step = 360 / count;
+    for (let i = 0; i < count; i++) {
+      const rot = Logic.wheelRotation(i, count, 0);
+      const mid = (i + 0.5) * step;
+      const landed = ((mid + rot) % 360 + 360) % 360;
+      assert.ok(landed < 1e-9 || landed > 360 - 1e-9, 'sector ' + i + '/' + count + ' lands at ' + landed);
+      // A jitter inside the sector keeps the pointer on that same sector.
+      const jitter = (step - 6) / 2;
+      const jittered = ((mid + Logic.wheelRotation(i, count, jitter)) % 360 + 360) % 360;
+      assert.ok(jittered < step / 2 || jittered > 360 - step / 2);
+    }
+  });
+});
+
 test('reduce: keep vs remove roster effect, and no reveal before REVEAL', function () {
   const s0 = { phase: 'spin', questionIndex: 0, questionCount: 2, selectedStudentId: null,
     students: [{ id: 'a', name: 'A', isActive: true }, { id: 'b', name: 'B', isActive: true }] };
