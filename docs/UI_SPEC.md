@@ -585,9 +585,9 @@ On smaller viewports, prioritize working functionality over trying to preserve t
 
 ### 7.3 Long content
 
-- Keep the reading in a scrollable pane with sensible max line length.
+- For long readings, the page scrolls and the passage keeps the full content width; there is no separate reading pane.
 - Preserve paragraph separation and do not truncate the actual reading.
-- When revealing evidence, scroll the reading pane to the Supporting Passage if it is off-screen, ideally without an abrupt full-page jump. Do not obscure the question panel.
+- Revealing evidence does not scroll the page: if the highlighted passage is above the viewport, the teacher scrolls to it. The pinned action bar may overlap the bottom of the content while scrolling; everything stays reachable by scrolling further.
 
 ---
 
