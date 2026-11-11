@@ -164,7 +164,7 @@ My Readings
 #### Definitions
 
 - **Excerpt:** the plain-text passage a question owns, copied from the book. It is the only reading text stored and shown.
-- **Key Evidence:** one or more words or phrases selected inside that question's Excerpt; the stronger highlight. Optional.
+- **Key Evidence:** zero or more words or phrases selected inside that question's Excerpt; the stronger highlight. Optional.
 - **Current Question:** the question being edited or taught. Only its Excerpt and annotations can appear.
 
 | ID | Requirement |

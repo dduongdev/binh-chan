@@ -331,7 +331,7 @@
     renderEditor();
   }
 
-  /* ---------------- EVD: dẫn chứng 2 cấp (SPEC §6.4, EVD-01..13) ---------------- */
+  /* ---------------- EVD: dẫn chứng một cấp trong excerpt (SPEC §6.4, EVD-01..13) ---------------- */
 
   // Dựng nội dung bằng text node + mark (không innerHTML) → an toàn XSS và
   // container.textContent luôn bằng text (offset phụ thuộc điều này).
