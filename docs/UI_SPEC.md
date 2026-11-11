@@ -1,6 +1,6 @@
 # ReadingFlow — UI/UX Design Specification
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** Design direction and implementation guidance for MVP  
 **Last updated:** November 10, 2026  
 **Product language:** **English only**  
@@ -39,8 +39,8 @@
 
 1. Exactly one dominant primary action per screen or step.
 2. No technical terminology visible to teachers: never show “offset,” “range,” “JSON,” “token,” or “annotation ID.”
-3. Never require the teacher to retype a quotation as evidence.
-4. Preserve the full reading context when marking evidence and when teaching.
+3. The excerpt is entered once as reading text; evidence is selected inside it, so the teacher never retypes a quotation as a separate evidence field.
+4. Preserve the current question's excerpt when marking evidence and when teaching.
 5. Keep student-selection actions explicit: **Keep**, **Remove**, **Spin Again**.
 6. Do not reveal answers or annotations until the teacher chooses **Reveal Answer**.
 7. Use consistent, plain English across the entire interface.
@@ -70,8 +70,7 @@ The following are **proposed ReadingFlow design tokens** inspired by the *feel* 
 | `--color-text` | `#203548` | Main text and titles. |
 | `--color-muted` | `#627588` | Secondary descriptions. |
 | `--color-border` | `#DCE6EB` | Quiet borders and input outlines. |
-| `--color-support` | `#FFF1B8` | **Supporting Passage** first-level highlight. |
-| `--color-key` | `#F7AD4A` | **Key Evidence** second-level highlight. |
+| `--color-key` | `#F7AD4A` | **Key Evidence** highlight. |
 | `--color-key-text` | `#593707` | Key Evidence foreground. |
 | `--color-correct-bg` | `#DDF6E6` | Correct answer reveal. |
 | `--color-correct-text` | `#175C38` | Correct answer text/icon. |
@@ -81,7 +80,6 @@ Color usage rules:
 
 - Use mostly `background`, `surface`, and `text` in the editor.
 - Use the colorful palette selectively for the wheel, welcome illustrations, and small accents.
-- The **Supporting Passage** should look like a soft warm overlay, not a bold block competing with text.
 - The **Key Evidence** must be meaningfully stronger: deeper orange background, bold text, and sufficient foreground contrast.
 - Correct answers must include a check icon and/or “Correct Answer” label, never green color alone.
 - Red is reserved for errors and destructive actions, not ordinary answer choices.
@@ -94,8 +92,8 @@ Color usage rules:
 | Section heading | `Nunito Sans` | 20–24 px | 700 |
 | Card heading | `Nunito Sans` | 17–19 px | 700 |
 | General UI and inputs | `Inter`, fallback `system-ui` | 15–16 px | 400–600 |
-| Reading passage (editor) | `Inter` or a highly legible reading typeface | 18 px | 400 |
-| Reading passage (teaching) | `Inter` | 22–26 px | 400 |
+| Reading excerpt (editor) | `Inter` or a highly legible reading typeface | 18 px | 400 |
+| Reading excerpt (teaching) | `Inter` | 22–26 px | 400 |
 | Question (teaching) | `Nunito Sans` | 25–32 px | 700–800 |
 | Wheel selected name | `Nunito Sans` | 32–44 px | 800 |
 | Small helper text | `Inter` | 13–14 px | 400–500 |
@@ -185,7 +183,7 @@ Allow the teacher to find a reading and either edit it or begin teaching immedia
 │                                                                │
 │ ┌───────────────────┐  ┌───────────────────┐                   │
 │ │ A Rainy Afternoon │  │ A Day at the Zoo  │                   │
-│ │ Passage preview...│  │ Passage preview...│                   │
+│ │ Excerpt preview...│  │ Excerpt preview...│                   │
 │ │ 5 questions       │  │ 3 questions       │                   │
 │ │ [Start Teaching]  │  │ [Start Teaching]  │                   │
 │ │ Edit  ·  Delete   │  │ Edit  ·  Delete   │                   │
@@ -199,7 +197,7 @@ Allow the teacher to find a reading and either edit it or begin teaching immedia
 - Primary CTA: **Create Reading** (plus icon).
 - Optional helper: **Create a lesson once. Use it whenever you teach.**
 - Search input: **Search readings...**
-- Reading cards: title, two-line passage preview, `5 questions`, last-updated date.
+- Reading cards: title, one-line preview of the first question's excerpt, `5 questions`, last-updated date.
 - Every ready lesson: prominent **Start Teaching** button; small **Edit**, **Delete** actions.
 - Drafts: label **Draft**; **Start Teaching** disabled or replaced by **Finish Setup**, with a clear explanation.
 - Empty state: modest original book illustration, **No readings yet**, **Create your first reading to get started.**, **Create Reading**.
@@ -217,13 +215,13 @@ Allow the teacher to find a reading and either edit it or begin teaching immedia
 
 ### Goal
 
-Allow the teacher to enter an **entire reading passage** and configure every question and its evidence — **Key Evidence** (required) plus an optional **Supporting Passage** — without moving between unrelated screens.
+Allow the teacher to enter the reading title and configure every question with **its own reading excerpt**, answer options, and **Key Evidence** inside that excerpt — without moving between unrelated screens.
 
 ### Layout
 
 A two-column workspace on desktop:
 
-- **Left: Reading Passage (approximately 55–60%)**.
+- **Left: Reading Excerpt (approximately 55–60%)**, bound to the active question.
 - **Right: Question Editor (approximately 40–45%)**.
 - Each panel can scroll independently if needed; scrolling should not hide critical navigation.
 - A slim sticky top action row contains **Back to My Readings**, reading title/status, **Save Reading**, and **Start Teaching** (when ready).
@@ -232,31 +230,32 @@ A two-column workspace on desktop:
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ ← My Readings    Reading Editor           [Save Reading] [Start Teaching] │
 ├─────────────────────────────────────┬───────────────────────────────────┤
-│ READING PASSAGE                     │ QUESTIONS                         │
+│ READING EXCERPT · QUESTION 1        │ QUESTIONS                         │
 │ [ A Rainy Afternoon             ]   │ [1] [2] [3] [+ Add Question]     │
-│ [Edit Passage]  [Mark Evidence]      │                                   │
+│ [Edit Excerpt]  [Mark Evidence]     │                                   │
 │                                     │ Question 1                        │
 │ Anna wanted to visit the park...    │ [Why did Anna stay at home?    ]  │
-│                                     │                                   │
-│ [  However, it was raining ... ]    │ ( ) She felt tired.               │
-│ [  KEY WORDS are stronger      ]    │ (●) It was raining heavily.       │
+│ [  It was RAINING HEAVILY ...   ]   │                                   │
+│                                     │ ( ) She felt tired.               │
+│                                     │ (●) It was raining heavily.       │
 │                                     │ ( ) She forgot her bag.          │
 │                                     │ [+ Add Option]                    │
 │                                     │                                   │
 │                                     │ EVIDENCE                          │
-│                                     │ ✓ Supporting Passage selected     │
-│                                     │ ✓ 1 Key Evidence highlight        │
+│                                     │ 1 Key Evidence highlight          │
 └─────────────────────────────────────┴───────────────────────────────────┘
 ```
 
-### A. Enter the entire reading
+### A. Enter a title and each question's excerpt
 
 - Reading title input: **Reading Title** / placeholder **Enter a title...**.
-- A large multiline input for the whole reading with paragraph breaks; **Paste or type the full reading passage...**.
-- The same stored text is used for the teaching screen and all annotation ranges.
-- Never ask for separate passage text for each question.
-- Once the teacher has entered the passage, they can switch to **Mark Evidence** mode and see clean, selectable text instead of a textarea.
-- **Edit Passage** mode returns to text entry. If evidence already exists, changing the text triggers the confirmation described in `MVP_SPEC.md`.
+- The left panel edits the **active question's excerpt**. No excerpt input exists until a question is added; show **Add a question to write its excerpt.**
+- Excerpt input: a multiline plain-text field with paragraph breaks; **Paste or type this question's excerpt from the book...**.
+- The panel heading shows **Reading Excerpt · Question N** so the teacher can see which question they are editing.
+- The stored excerpt is the only reading text for that question, used both in the editor and on the teaching screen.
+- There is no whole-reading passage field, preview, or stored value.
+- Once the teacher has entered an excerpt, they can switch to **Mark Evidence** mode and see clean, selectable text instead of a textarea.
+- **Edit Excerpt** mode returns to text entry. If the question already has highlights, changing the text triggers the confirmation described in `MVP_SPEC.md`.
 
 ### B. Question editor
 
@@ -271,54 +270,44 @@ A two-column workspace on desktop:
 - Preserve drafts while changing active questions.
 - A small status at the top of the active question shows **Draft** or **Ready**.
 
-### C. The two-level evidence selection workflow
+### C. The evidence selection workflow
 
 This is the most important Editor interaction.
 
-**Step 1 — Optionally select the Supporting Passage**
-
-1. Make a question active.
-2. In the left passage panel, drag to select a sentence or excerpt from the original text.
-3. Use **Set Supporting Passage** from the evidence actions under the current question.
-4. On click, shade that excerpt with **pale yellow** `--color-support`.
-5. Under the current question, show a discreet indicator: **Supporting Passage selected**, or **Supporting Passage not set (optional)**.
-
-**Step 2 — Highlight Key Evidence anywhere**
-
-1. Select one or more important words or phrases **anywhere in the passage** — inside or outside the Supporting Passage, or with no Supporting Passage at all.
-2. Use **Highlight Key Evidence** from the same evidence actions.
-3. On click, emphasize that text with a **stronger orange background and bold foreground text**; inside the pale yellow excerpt it sits on top of that background.
-4. The question editor shows **1 Key Evidence highlight**, **2 Key Evidence highlights**, etc.
-5. Clicking a key highlight (or its compact list entry) offers **Remove Highlight**.
+1. Make a question active; its excerpt appears in the left panel.
+2. Switch to **Mark Evidence** and drag to select one or more important words or phrases inside that excerpt.
+3. Click **Highlight Key Evidence** from the evidence actions under the current question.
+4. On click, emphasize that text with a **strong orange background and bold foreground text**.
+5. The question editor shows **1 Key Evidence highlight**, **2 Key Evidence highlights**, etc.
+6. Clicking a highlight removes it; **Clear Key Evidence** removes them all.
 
 **Behavioral safeguards**
 
-- Key Evidence may be set anywhere in the passage; the Supporting Passage is optional.
-- The Supporting Passage remains a single contiguous range and never blocks Key Evidence.
-- When the active question changes, all visible evidence updates to match that question only.
-- A phrase used for Question 1 can be reused by Question 2 without any conflict.
-- Changing or clearing the Supporting Passage leaves Key Evidence untouched.
-- No color picker, annotation-management screen, secondary quote textarea, or offset fields.
-- Highlight colors are fixed by role; evidence is not selected via confusing menu categories.
+- Only the current question's excerpt and highlights are shown.
+- When the active question changes, the excerpt and visible evidence update to match that question only.
+- A phrase used for Question 1 can be reused by Question 2 without any conflict; each question holds its own excerpt.
+- Editing an excerpt warns and clears only that question's highlights, after confirmation.
+- No color picker, annotation-management screen, separate quote field, or offset fields.
+- Highlight color is fixed by role; evidence is not selected via confusing menu categories.
 
 ### Evidence visual example
 
-Plain, unmarked text:
+Excerpt for the active question:
 
-> However, it was raining heavily, so she decided to stay at home and read a book.
+> Anna wanted to visit the park. However, it was raining heavily, so she stayed home.
 
-For the active question:
+After reveal, or while marking:
 
-- The entire sentence has a **light warm-yellow** background (**Supporting Passage**).
-- `it was raining heavily` has an **orange-gold** background and bold type (**Key Evidence**).
-- The sentence stays readable, paragraph layout stays intact, and the rest of the reading remains unmodified.
+- `raining heavily` has an **orange-gold** background and bold type (**Key Evidence**).
+- The rest of the excerpt remains normal text.
+- The excerpt stays readable, paragraph layout stays intact, and nothing outside this question is highlighted.
 
 ### Toolbar and feedback
 
 - Top actions: **Save Reading** (primary while editing), **Start Teaching** (secondary or primary when saved and ready).
 - For invalid drafts, keep **Save Reading** available; show contextual missing-field guidance.
 - After save: brief non-blocking text **Reading saved**.
-- Passage modification warning: **Editing this passage will clear the existing evidence highlights. Continue?** Buttons: **Cancel** / **Continue Editing**.
+- Excerpt modification warning: **Editing this excerpt will clear its evidence highlights. Continue?** The app uses the native confirm (OK / Cancel), so no custom button labels are needed.
 - Avoid a large persistent sidebar listing every highlight; lightweight status text is sufficient.
 
 ---
@@ -429,9 +418,9 @@ Support a teacher-led verbal answer while keeping all hints concealed.
 
 ### Layout
 
-Desktop stacked layout: the full-width reading passage sits on top, the active question beneath it:
+Desktop stacked layout: the current question's excerpt spans the top, the active question beneath it:
 
-- Top (full content width): **Reading Passage** in a calm, white panel; full original text, generous line spacing, page-scrolled for long readings.
+- Top (full content width): **Reading Excerpt** in a calm, white panel; generous line spacing, page-scrolled for long excerpts.
 - Below it: selected student name, the question, and visible answer options.
 - Bottom of the viewport: one large primary button **Reveal Answer**, in a bar pinned to the viewport edge so it never scrolls away.
 
@@ -439,9 +428,9 @@ Desktop stacked layout: the full-width reading passage sits on top, the active q
 ┌──────────────────────────────────────────────────────────────────┐
 │ Question 1 of 5                                                  │
 │ ┌──────────────────────────────────────────────────────────────┐ │
-│ │ READING PASSAGE                                              │ │
-│ │ Anna wanted to visit the park...                             │ │
-│ │ However, it was raining heavily, so she decided...           │ │
+│ │ READING EXCERPT                                              │ │
+│ │ Anna wanted to visit the park. However, it was raining       │ │
+│ │ heavily, so she stayed home.                                 │ │
 │ │ [ordinary unhighlighted text]                                │ │
 │ └──────────────────────────────────────────────────────────────┘ │
 │ Emma Johnson                                                     │
@@ -458,8 +447,8 @@ Desktop stacked layout: the full-width reading passage sits on top, the active q
 - **No green correct-answer styling** before reveal.
 - Answer choices are presentation items, not student-submitted interactive votes.
 - Keep the selected student's name visible, but visually subordinate to the question.
-- Show the full passage; do not replace it with the excerpt alone.
-- For long passages the page scrolls; the action bar stays pinned to the bottom of the viewport.
+- Show only the current question's excerpt; there is no full-reading view.
+- For long excerpts the page scrolls; the action bar stays pinned to the bottom of the viewport.
 - All important controls must be reachable by mouse and keyboard.
 
 ---
@@ -473,25 +462,23 @@ Make the reasoning behind the correct answer instantly visible on a projector.
 ### Changes from Before Reveal
 
 1. The correct option receives a clear green-tinted background, check icon, and **Correct Answer** label.
-2. The question's **Supporting Passage**, when one is set, is shaded pale yellow in the full-width passage panel at the top.
-3. The question's **Key Evidence** words/phrases are shown with orange-gold emphasis and bold text, on top of the pale yellow background when they overlap the Supporting Passage.
-4. Evidence associated with other questions stays hidden.
-5. The primary CTA changes to **Next Question**, or **Finish Lesson** for the final question.
+2. The question's **Key Evidence** words/phrases are shown with orange-gold emphasis and bold text inside the excerpt.
+3. Evidence associated with other questions stays hidden.
+4. The primary CTA changes to **Next Question**, or **Finish Lesson** for the final question.
 
 ### Visual hierarchy
 
-- **Level 0:** the rest of the passage remains normal text.
-- **Level 1:** Supporting Passage is subtly highlighted; the teacher and students can locate the relevant sentence(s).
-- **Level 2:** Key Evidence is strongly highlighted and bold; attention goes to the decisive words.
+- **Level 0:** the rest of the excerpt remains normal text.
+- **Level 1:** Key Evidence is strongly highlighted and bold; attention goes to the decisive words.
 - **Answer:** correct choice is independently marked green with a check and text label.
 
-Use a small optional legend only if clarity needs it: **Supporting Passage** and **Key Evidence**; avoid a permanent explanatory panel when the colors are self-explanatory in context.
+No legend is needed for a single highlight level; the orange emphasis and green correct answer are self-explanatory in context.
 
 ### Interaction
 
-- A single click on **Reveal Answer** causes the correct answer and the question's evidence to appear together: the Supporting Passage if one is set, plus every Key Evidence range.
+- A single click on **Reveal Answer** causes the correct answer and the question's Key Evidence to appear together.
 - Do not animate highlights in an elaborate or distracting way. A quick fade of around 150–250 ms is sufficient.
-- Click **Next Question** to reset all evidence/answer styling and return to the wheel for the next student.
+- Click **Next Question** to reset all evidence/answer styling and return to the wheel for the next student; the next question's excerpt replaces the previous one.
 
 ---
 
@@ -519,10 +506,10 @@ A restrained celebratory color accent is appropriate; the screen should stay cal
 | Component | Required states / behavior |
 | --- | --- |
 | `AppHeader` | Compact app identity; simple navigation; never crowded. |
-| `ReadingCard` | Ready/draft, title, passage preview, question count, primary teaching action. |
-| `ReadingTextEditor` | Whole passage text entry; preserves line breaks; clear edit state. |
-| `ReadingEvidenceViewer` | Displays full passage and current question's two-tier range highlights; supports direct text selection in editor mode. |
-| `EvidenceActions` | Fixed **Set Supporting Passage** / **Highlight Key Evidence** actions under the active question; enabled when a passage selection exists. |
+| `ReadingCard` | Ready/draft, title, excerpt preview, question count, primary teaching action. |
+| `ExcerptTextEditor` | Plain-text excerpt for the active question; preserves line breaks; clear Edit state. |
+| `ReadingEvidenceViewer` | Displays the active question's excerpt and its one-level Key Evidence ranges; supports direct text selection in mark mode. |
+| `EvidenceActions` | Fixed **Highlight Key Evidence** / **Clear Key Evidence** actions under the active question; enabled when an excerpt selection exists. |
 | `QuestionTabs` | Ordered question chips, active state, add and accessible reorder actions. |
 | `QuestionForm` | Prompt, variable answer options, one correct radio, evidence status. |
 | `StudentNamesInput` | Multiline paste, live valid-name count, simple errors. |
@@ -531,7 +518,7 @@ A restrained celebratory color accent is appropriate; the screen should stay cal
 | `SelectedStudentActions` | **Keep**, **Remove**, **Spin Again**; explicit consequences. |
 | `TeachingQuestionPanel` | Read-only options before reveal, one highlighted correct option after reveal. |
 | `TeachingProgress` | **Question X of Y** with minimal optional progress bar. |
-| `ConfirmDialog` | Only for destructive deletion, passage evidence invalidation, or leaving an active session. |
+| `ConfirmDialog` | Only for destructive deletion, excerpt evidence invalidation, or leaving an active session. |
 | `Toast` | Small, brief saving/error feedback; non-blocking. |
 
 All reusable controls must have stable hover, focus, disabled, error, and loading states where relevant.
@@ -562,7 +549,7 @@ When `prefers-reduced-motion` is enabled:
 
 - Errors appear next to the relevant field; avoid generic “Something went wrong” when a specific reason is available.
 - Prevent accidental deletion of questions or readings through clear confirmations when data loss is significant.
-- Changing an annotated passage explains the consequence **before** evidence ranges are cleared.
+- Changing an annotated excerpt explains the consequence **before** that question's evidence ranges are cleared.
 - A wheel with no active names shows **Restore All Students** prominently.
 - A disabled button has a visible explanation; never leave the user guessing why Start Teaching is unavailable.
 
@@ -592,9 +579,9 @@ On smaller viewports, prioritize working functionality over trying to preserve t
 
 ### 7.3 Long content
 
-- For long readings, the page scrolls and the passage keeps the full content width; there is no separate reading pane.
-- Preserve paragraph separation and do not truncate the actual reading.
-- Revealing evidence does not scroll the page: if the highlighted passage is above the viewport, the teacher scrolls to it. The pinned action bar may overlap the bottom of the content while scrolling; everything stays reachable by scrolling further.
+- For long excerpts, the page scrolls and the excerpt keeps the full content width; there is no separate full-reading pane.
+- Preserve paragraph separation and do not truncate the excerpt.
+- Revealing evidence does not scroll the page: if the highlighted excerpt is above the viewport, the teacher scrolls to it. The pinned action bar may overlap the bottom of the content while scrolling; everything stays reachable by scrolling further.
 
 ---
 
@@ -607,7 +594,7 @@ On smaller viewports, prioritize working functionality over trying to preserve t
 - Wheel outcomes must be announced in text: **Selected student: Emma Johnson**; never rely on color/pointer position alone.
 - **Keep** and **Remove** require explicit text labels, not just icons.
 - Correct answer must be explicitly labeled **Correct Answer**, not green only.
-- Evidence should have distinguishable differences in background strength and font weight. Ensure both colors preserve adequate text contrast.
+- Evidence must be distinguishable by background and font weight. Ensure the highlight preserves adequate text contrast.
 - Support keyboard text selection where the browser allows; contextual actions must also be keyboard accessible.
 - Do not autoplay distracting sounds or require sound to understand feedback.
 
@@ -627,21 +614,22 @@ Use these exact or closely equivalent English strings consistently. Do not intro
 | Empty library body | `Create your first reading to get started.` |
 | Editor title | `Reading Editor` |
 | Reading title label | `Reading Title` |
-| Passage label | `Reading Passage` |
-| Passage placeholder | `Paste or type the full reading passage...` |
-| Passage edit switch | `Edit Passage` |
+| Excerpt label | `Reading Excerpt` |
+| Excerpt placeholder | `Paste or type this question's excerpt from the book...` |
+| Excerpt edit switch | `Edit Excerpt` |
 | Evidence switch | `Mark Evidence` |
+| No active question | `Add a question to write its excerpt.` |
+| No evidence question | `Add a question to write an excerpt and mark evidence.` |
+| Library card without excerpt | `No excerpt yet.` |
 | Add question | `Add Question` |
 | Question placeholder | `Enter your question...` |
 | Answer heading | `Answer Options` |
 | Add answer option | `Add Option` |
 | Correct answer helper | `Select the correct answer.` |
-| Supporting selection action | `Set Supporting Passage` |
 | Key selection action | `Highlight Key Evidence` |
-| Supporting status | `Supporting Passage selected` |
 | Key status | `1 Key Evidence highlight` / `2 Key Evidence highlights` |
 | Remove key evidence | `Remove Highlight` |
-| Clear supporting evidence | `Clear Supporting Passage` |
+| Clear key evidence | `Clear Key Evidence` |
 | Save | `Save Reading` |
 | Save success | `Reading saved` |
 | Draft label | `Draft` |
@@ -676,10 +664,10 @@ Use these exact or closely equivalent English strings consistently. Do not intro
 | Cancel | `Cancel` |
 | Confirm delete | `Delete Reading` |
 | Reading deletion warning | `Delete this reading? This action cannot be undone.` |
-| Passage invalidation warning | `Editing this passage will clear the existing evidence highlights. Continue?` |
-| Supporting status unset | `Supporting Passage not set (optional)` |
+| Excerpt invalidation warning | `Editing this excerpt will clear its evidence highlights. Continue?` |
+| Missing excerpt reason | `Question N has no reading excerpt.` |
 | No students error | `Add at least one student to start.` |
-| Incomplete reading reason | `Finish the questions, answers, and evidence before teaching.` |
+| Incomplete reading reason | `Finish the title, questions, answers, and excerpts before teaching.` |
 | Unsaved lesson warning | `You have unsaved changes.` |
 
 **Copy tone:** short, encouraging, practical. Avoid exaggerated promotional language and exclamation marks on every screen.
@@ -691,44 +679,55 @@ Use these exact or closely equivalent English strings consistently. Do not intro
 Produce these **nine distinct high-fidelity desktop screens/states** as a coherent family:
 
 1. `LIB-01` — **My Readings** with ready lessons and an incomplete draft.
-2. `EDT-01A` — **Reading Editor**, passage entry with multi-paragraph text and an empty new question.
-3. `EDT-01B` — **Reading Editor**, active question with options, pale Supporting Passage and orange Key Evidence inside it.
+2. `EDT-01A` — **Reading Editor**, active question's excerpt entry with a new empty question.
+3. `EDT-01B` — **Reading Editor**, active question with options, its excerpt, and orange Key Evidence inside it.
 4. `SET-01` — **Teaching Setup**, populated student names, live count, and the spinning wheel preview beside the field.
 5. `TCH-01A` — **Spin the Wheel**, before spinning.
 6. `TCH-01B` — **Selected Student**, with **Keep / Remove / Spin Again**.
-7. `TCH-02` — **Question Before Reveal**, with no answer or evidence highlighted.
-8. `TCH-03` — **Answer Revealed**, correct answer and both evidence levels highlighted.
+7. `TCH-02` — **Question Before Reveal**, showing the current question's excerpt with no answer or evidence highlighted.
+8. `TCH-03` — **Answer Revealed**, correct answer and the excerpt's Key Evidence highlighted.
 9. `TCH-04` — **Lesson Complete**.
 
 ### Recommended sample lesson content
 
 **Reading title:** A Rainy Afternoon
 
-**Full passage:**
+**Question 1 excerpt:**
 
-> Anna wanted to visit the park with her friends. However, it was raining heavily, so she decided to stay at home and read a book. Later that afternoon, her brother invited her to bake cookies. They had a wonderful time together.
+> Anna wanted to visit the park. However, it was raining heavily, so she stayed home.
 
-**Question 1:** Why did Anna stay at home?
+**Question 1:** Why did Anna stay home?
 
 - She felt tired.
 - **It was raining heavily.** *(correct)*
 - She forgot her bag.
 
-**Supporting Passage:** `However, it was raining heavily, so she decided to stay at home and read a book.`
+**Key Evidence:** `raining heavily`
 
-**Key Evidence:** `it was raining heavily`
+**Question 2 excerpt:**
 
-**Question 2:** What did Anna do at home before baking cookies?
+> At home, Anna made a cup of tea and read a book about birds.
+
+**Question 2:** What did Anna do at home?
 
 - She watched television.
 - **She read a book.** *(correct)*
 - She played a game.
 
-**Supporting Passage:** `so she decided to stay at home and read a book.`
-
 **Key Evidence:** `read a book`
 
-When demonstrating Question 1, show only Question 1's evidence. When demonstrating Question 2, show only Question 2's evidence. Before revealing answers in a teaching mockup, hide both levels even though they have been configured.
+**Question 3 excerpt:**
+
+> By the evening, the rain stopped and Anna felt happy.
+
+**Question 3:** How did Anna feel?
+
+- **Happy** *(correct)*
+- Angry
+
+**Key Evidence:** none
+
+When demonstrating Question 1, show only Question 1's excerpt and evidence. When demonstrating Question 2, show only Question 2's excerpt and evidence. Before revealing answers in a teaching mockup, hide the correct answer and the evidence even though they have been configured.
 
 ---
 
@@ -738,9 +737,9 @@ For a coding agent or frontend team:
 
 1. **Read `MVP_SPEC.md` before implementing interactions.** This file controls business logic and readiness conditions.
 2. Build reusable components and centralized design tokens; avoid hardcoding stylistic values per screen.
-3. Implement actual selectable text ranges against a canonical passage string; do not fake evidence by hardcoding an HTML `<mark>` in the lesson content.
-4. Keep the editor's passage input and annotated passage viewer grounded in the same saved text.
-5. Distinguish `Supporting Passage` and `Key Evidence` through layered rendering; do not flatten them into one highlight.
+3. Implement actual selectable text ranges against each question's saved excerpt; do not fake evidence by hardcoding an HTML `<mark>` in the lesson content.
+4. Keep the editor's excerpt input and annotated excerpt viewer grounded in the same saved text.
+5. Distinguish **Key Evidence** inside the excerpt with one highlight level; do not add a second evidence layer.
 6. Never show any configured evidence in a teaching question until reveal.
 7. Model wheel eligibility explicitly. Do not implement an automatic no-repeat policy: only explicit **Remove** changes the active roster.
 8. Use native accessible buttons, controls, and keyboard interactions wherever practical.
@@ -758,14 +757,14 @@ For a coding agent or frontend team:
 - [ ] The app still feels calm, minimal, and teacher-first despite cheerful colors.
 - [ ] All on-screen copy is English.
 - [ ] Library cards clearly prioritize **Start Teaching** and **Create Reading**.
-- [ ] The editor has one place for the entire reading passage, with no duplicated quote fields.
-- [ ] The current question's Key Evidence is visibly strong, and a Supporting Passage (when set) is pale yellow beneath it.
-- [ ] Switching questions changes the evidence shown in the editor.
+- [ ] The editor gives each question one excerpt, with no whole-reading field and no duplicated quote fields.
+- [ ] The current question's Key Evidence is the only highlight level, and the excerpt stays readable.
+- [ ] Switching questions changes the excerpt and evidence shown in the editor.
 - [ ] Dynamic answer options and the correct-answer radio remain easy to scan.
 - [ ] The student wheel is fun, readable, and clearly identifies its selected student.
 - [ ] **Keep**, **Remove**, and **Spin Again** have unambiguous meaning and prominence.
 - [ ] No evidence or correct-answer colors appear before **Reveal Answer**.
-- [ ] After reveal, correct answer, Supporting Passage, and Key Evidence are all visually distinct.
+- [ ] After reveal, the correct answer and Key Evidence are visually distinct.
 - [ ] Every teaching stage has an obvious next action and a visible question-progress indicator.
 - [ ] Full-screen presentation works on a 16:9 projector without tiny text.
 - [ ] Keyboard navigation, focus states, contrast, and reduced-motion behavior are usable.

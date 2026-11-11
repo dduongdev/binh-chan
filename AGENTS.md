@@ -1,13 +1,13 @@
 # AGENTS.md
 
-Hướng dẫn cho agent khi làm việc trong repo này. **Nguồn sự thật là `docs/MVP_SPEC.md`** (v2.0) — đọc trước khi implement, không tự suy diễn thêm. `docs/UI_SPEC.md` là tài liệu bổ trợ về hình ảnh/copy; khi xung đột, `MVP_SPEC.md` điều khiển hành vi, `UI_SPEC.md` điều khiển trình bày.
+Hướng dẫn cho agent khi làm việc trong repo này. **Nguồn sự thật là `docs/MVP_SPEC.md`** (v2.2) — đọc trước khi implement, không tự suy diễn thêm. `docs/UI_SPEC.md` là tài liệu bổ trợ về hình ảnh/copy; khi xung đột, `MVP_SPEC.md` điều khiển hành vi, `UI_SPEC.md` điều khiển trình bày.
 
 ## 1. Dự án
 
 **ReadingFlow** — ứng dụng web giúp **giáo viên tiếng Anh** chuẩn bị bài đọc và điều khiển buổi học Reading trên lớp (dùng trên máy tính, có thể trình chiếu). Giáo viên điều khiển hoàn toàn; học sinh không đăng nhập, không dùng thiết bị riêng. Toàn bộ UI tiếng Anh (SPEC §9).
 
 - 4 khu vực: **`LIB`** My Readings · **`EDT`** Reading Editor · **`SET`** Teaching Setup · **`TCH`** Teaching Session (SPEC §3.1). `SET` và `TCH` là hai chặng của cùng một luồng giảng dạy.
-- Luồng chính: tạo bài trong thư viện → dán **toàn bộ** đoạn văn → thêm câu hỏi trắc nghiệm theo thứ tự → đánh dấu dẫn chứng 2 cấp → **Start Teaching** → nhập tên học sinh → quay vòng → **Keep/Remove** → hiện câu hỏi (ẩn đáp án) → **Reveal Answer** → **Next Question** → Lesson Complete. Học sinh trả lời bằng lời, không cần thiết bị.
+- Luồng chính: tạo bài trong thư viện → nhập tiêu đề → thêm câu hỏi trắc nghiệm theo thứ tự → dán **excerpt của câu đó** → đánh dấu **Key Evidence** một cấp trong excerpt → **Start Teaching** → nhập tên học sinh → quay vòng → **Keep/Remove** → hiện excerpt + câu hỏi (ẩn đáp án) → **Reveal Answer** → **Next Question** → Lesson Complete. Học sinh trả lời bằng lời, không cần thiết bị.
 - Lưu trữ: bài đọc lưu bền vững trên cùng môi trường sử dụng; trạng thái buổi học **không** cần khôi phục sau reload.
 - Chỉ làm trong phạm vi MVP. Mọi thứ ở **SPEC §2.2** (đăng nhập/phân quyền, đồng bộ nhiều thiết bị, chấm điểm/thống kê, AI tạo câu hỏi, PDF/Word/OCR, mobile, dạng câu hỏi khác…) là ngoài phạm vi — không tự thêm.
 
@@ -17,23 +17,24 @@ Hướng dẫn cho agent khi làm việc trong repo này. **Nguồn sự thật 
 - **Lưu trữ:** `localStorage` cục bộ — bài đọc lưu bền vững; trạng thái buổi học chỉ trong phiên.
 - **Không backend, không phụ thuộc mạng, không đồng bộ nhiều thiết bị** (đúng phạm vi MVP).
 
-Có code nhưng **chưa có commit** (mọi file còn untracked):
+Code hiện có:
 
 - `index.html` + `styles.css` — khung UI tĩnh.
 - `src/app.js` — điều khiển màn hình, `localStorage`, quay vòng (vanilla JS).
 - `src/logic.js` — logic thuần (không DOM), có test ở `tests/logic.test.js`.
-- Code đã theo **SPEC v2.1**: dẫn chứng 2 cấp (`supportingPassage` tuỳ chọn + `keyEvidence[]` đặt bất kỳ đâu), khu vực `LIB/EDT/SET/TCH`, cơ chế **Keep/Remove**. (Mô hình cũ `SCR-01..03` với dẫn chứng một cấp `highlights` đã bị thay thế.)
+- Code đã theo **SPEC v2.2**: bài học chỉ gồm tiêu đề + từng câu hỏi, mỗi câu có `passage` (excerpt) riêng và `keyEvidence[]` một cấp bên trong excerpt; không lưu hay hiển thị toàn bài đọc. Lưu ở `readingflow.readings.v2`; dữ liệu `v1` cũ bị bỏ qua, không migrate/xoá. Khu vực `LIB/EDT/SET/TCH`, cơ chế **Keep/Remove** giữ nguyên.
 
 ## 3. Bất biến nghiệp vụ (không được vi phạm)
 
 - Mỗi câu hỏi: **≥ 2 lựa chọn** có nội dung và **đúng chính xác 1** đáp án (số lựa chọn linh hoạt, không cố định A/B/C/D).
-- Dẫn chứng gắn **theo từng câu hỏi** với **2 cấp hiển thị**: **Key Evidence** (≥ 1 vùng để Ready, đặt **bất kỳ đâu** trong bài đọc, đậm/bold hơn — cấp 2) và **Supporting Passage** (**tuỳ chọn**, tối đa 1 vùng liền mạch, nền nhạt — cấp 1). Đổi/clear Supporting Passage **không** xoá Key Evidence. Khi sửa/duyệt câu X chỉ hiện dẫn chứng của X, không lộ của câu khác (EVD-01..13).
+- Dẫn chứng gắn **theo từng câu hỏi** với **một cấp duy nhất**: **Key Evidence** — 0 hoặc nhiều vùng nằm trong `question.passage` của chính câu đó, đậm/nổi hơn. Highlight là **tuỳ chọn**, không ảnh hưởng Ready. Khi sửa/duyệt câu X chỉ hiện excerpt và dẫn chứng của X, không lộ của câu khác (EVD-01..13).
 - Chưa nhấn **Reveal Answer** thì không được lộ đáp án đúng hay **bất kỳ dẫn chứng nào** (TCH-04, EVD-13).
 - Sang câu mới: reset `selectedStudent = null`, `answerRevealed = false`, phase về `spin` (SPEC §7, TCH-07).
 - Vòng quay chọn **đều xác suất** từ danh sách **đang active**; **KHÔNG** tự loại học sinh sau khi quay (không auto no-repeat). Chỉ **Remove** mới loại khỏi các vòng sau **trong phiên**; **Keep** giữ lại; **Spin Again** không đổi roster (SPN-01..09). Hết học sinh active → disable Spin + `Restore All Students` (SPN-10, SPN-11).
-- Offset dẫn chứng dùng **nửa mở** `[startOffset, endOffset)`, `0 <= startOffset < endOffset <= content.length`, theo chỉ số **UTF-16** của `content` canonical; suy ra từ vùng bôi đen DOM, **không** dùng `indexOf` (cụm từ có thể lặp lại nhiều lần).
-- Sửa nội dung bài đọc khi đã có dẫn chứng → cảnh báo rõ; nếu xác nhận thì xóa **toàn bộ** dẫn chứng của **mọi câu**, không tự căn chỉnh offset (SPEC §6.5).
-- Chỉ cho **Start Teaching** khi bài đọc hợp lệ (đủ 8 điều kiện SPEC §5); bài thiếu vẫn lưu nháp được.
+- Offset dẫn chứng dùng **nửa mở** `[startOffset, endOffset)`, `0 <= startOffset < endOffset <= passage.length`, theo chỉ số **UTF-16** của `question.passage` canonical; suy ra từ vùng bôi đen DOM, **không** dùng `indexOf` (cụm từ có thể lặp lại nhiều lần).
+- Sửa excerpt của một câu khi đã có dẫn chứng → cảnh báo rõ; nếu xác nhận thì chỉ xóa dẫn chứng của **câu đó**, không tự căn chỉnh offset (SPEC §6.5). Cancel khôi phục text cũ và giữ dẫn chứng.
+- Chỉ cho **Start Teaching** khi bài đọc hợp lệ (đủ 6 điều kiện SPEC §5: tiêu đề, ≥ 1 câu, prompt, ≥ 2 lựa chọn, đúng 1 đáp án, excerpt không trống); bài thiếu vẫn lưu nháp được.
+- Không lưu, không hiển thị, không trình chiếu toàn bài đọc ở bất kỳ đâu; mỗi câu chỉ có excerpt riêng.
 - Mọi nội dung giáo viên nhập hiển thị dạng **text**, không thực thi HTML/script.
 
 ## 4. Skill dùng trong dự án này
