@@ -150,11 +150,17 @@
             return st.id === s.selectedStudentId ? Object.assign({}, st, { isActive: false }) : st;
           })
         });
-      case 'REVEAL':
+      case 'REVEAL_ANSWER':
         if (s.phase !== 'question') return s;
-        return Object.assign({}, s, { phase: 'revealed' });
+        return Object.assign({}, s, { phase: 'answer' });
+      case 'SHOW_EXCERPT':
+        if (s.phase !== 'answer') return s;
+        return Object.assign({}, s, { phase: 'excerpt' });
+      case 'SHOW_EVIDENCE':
+        if (s.phase !== 'excerpt') return s;
+        return Object.assign({}, s, { phase: 'evidence' });
       case 'NEXT':
-        if (s.phase !== 'revealed') return s;
+        if (s.phase !== 'excerpt' && s.phase !== 'evidence') return s;
         if (s.questionIndex >= s.questionCount - 1) return Object.assign({}, s, { phase: 'completed' });
         return Object.assign({}, s, { phase: 'spin', questionIndex: s.questionIndex + 1, selectedStudentId: null });
       case 'RESTORE':

@@ -117,7 +117,7 @@ test('wheelRotation: the winner sector stops under the top pointer', function ()
   });
 });
 
-test('reduce: keep vs remove roster effect, and no reveal before REVEAL', function () {
+test('reduce: keep vs remove roster effect, and staged reveal', function () {
   const s0 = { phase: 'spin', questionIndex: 0, questionCount: 2, selectedStudentId: null,
     students: [{ id: 'a', name: 'A', isActive: true }, { id: 'b', name: 'B', isActive: true }] };
 
@@ -125,22 +125,43 @@ test('reduce: keep vs remove roster effect, and no reveal before REVEAL', functi
   assert.strictEqual(sel.phase, 'selected');
   assert.strictEqual(sel.selectedStudentId, 'a');
 
-  assert.strictEqual(Logic.reduce(sel, { type: 'REVEAL' }).phase, 'selected'); // ignored in 'selected'
+  assert.strictEqual(Logic.reduce(sel, { type: 'REVEAL_ANSWER' }).phase, 'selected'); // ignored
   const kept = Logic.reduce(sel, { type: 'KEEP' });
   assert.strictEqual(kept.phase, 'question');
-  assert.ok(kept.students.every(function (x) { return x.isActive; })); // keep changes nothing
+  assert.ok(kept.students.every(function (x) { return x.isActive; }));
 
   const removed = Logic.reduce(sel, { type: 'REMOVE' });
   assert.strictEqual(removed.students.find(function (x) { return x.id === 'a'; }).isActive, false);
 
-  const revealed = Logic.reduce(kept, { type: 'REVEAL' });
-  assert.strictEqual(revealed.phase, 'revealed');
-  const next = Logic.reduce(revealed, { type: 'NEXT' });
+  assert.strictEqual(Logic.reduce(kept, { type: 'SHOW_EXCERPT' }).phase, 'question'); // ignored
+  const answered = Logic.reduce(kept, { type: 'REVEAL_ANSWER' });
+  assert.strictEqual(answered.phase, 'answer');
+  assert.strictEqual(Logic.reduce(answered, { type: 'NEXT' }).phase, 'answer'); // ignored
+  assert.strictEqual(Logic.reduce(answered, { type: 'SHOW_EVIDENCE' }).phase, 'answer'); // ignored
+
+  const excerpt = Logic.reduce(answered, { type: 'SHOW_EXCERPT' });
+  assert.strictEqual(excerpt.phase, 'excerpt');
+  assert.strictEqual(Logic.reduce(excerpt, { type: 'REVEAL_ANSWER' }).phase, 'excerpt'); // ignored
+
+  const evidence = Logic.reduce(excerpt, { type: 'SHOW_EVIDENCE' });
+  assert.strictEqual(evidence.phase, 'evidence');
+  const next = Logic.reduce(evidence, { type: 'NEXT' });
   assert.strictEqual(next.phase, 'spin');
   assert.strictEqual(next.questionIndex, 1);
   assert.strictEqual(next.selectedStudentId, null);
 
-  const last = { phase: 'revealed', questionIndex: 1, questionCount: 2, selectedStudentId: 'b', students: s0.students };
+  const last = { phase: 'evidence', questionIndex: 1, questionCount: 2, selectedStudentId: 'b', students: s0.students };
+  assert.strictEqual(Logic.reduce(last, { type: 'NEXT' }).phase, 'completed');
+});
+
+test('reduce: NEXT from excerpt is the no-evidence path', function () {
+  const s = { phase: 'excerpt', questionIndex: 0, questionCount: 2, selectedStudentId: 'a', students: [] };
+  const next = Logic.reduce(s, { type: 'NEXT' });
+  assert.strictEqual(next.phase, 'spin');
+  assert.strictEqual(next.questionIndex, 1);
+  assert.strictEqual(next.selectedStudentId, null);
+
+  const last = { phase: 'excerpt', questionIndex: 1, questionCount: 2, selectedStudentId: 'a', students: [] };
   assert.strictEqual(Logic.reduce(last, { type: 'NEXT' }).phase, 'completed');
 });
 
