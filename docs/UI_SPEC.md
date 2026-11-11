@@ -1,6 +1,6 @@
 # ReadingFlow — UI/UX Design Specification
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Status:** Design direction and implementation guidance for MVP  
 **Last updated:** November 11, 2026  
 **Product language:** **English only**  
@@ -40,9 +40,9 @@
 1. Exactly one dominant primary action per screen or step.
 2. No technical terminology visible to teachers: never show “offset,” “range,” “JSON,” “token,” or “annotation ID.”
 3. The excerpt is entered once as reading text; evidence is selected inside it, so the teacher never retypes a quotation as a separate evidence field.
-4. Preserve the current question's excerpt when marking evidence; in teaching, reveal it only after **Reveal Answer**.
+4. Preserve the current question's excerpt when marking evidence; in teaching, reveal it only after **Show Excerpt**.
 5. Keep student-selection actions explicit: **Keep**, **Remove**, **Spin Again**.
-6. Do not reveal the excerpt, answers, or annotations until the teacher chooses **Reveal Answer**.
+6. Reveal in three teacher-controlled steps: **Reveal Answer**, then **Show Excerpt**, then **Show Key Evidence**.
 7. Use consistent, plain English across the entire interface.
 8. Prefer inline controls and contextual menus over large modals and side-drawer mazes.
 9. Avoid a dashboard with statistics, charts, leaderboards, or unused navigation.
@@ -154,8 +154,9 @@ My Readings
                          └── Start Session
                                └── Spin → Selected Student
                                      └── Keep / Remove → Question
-                                          └── Reveal Answer (excerpt appears) → Next Question
-                                                └── Lesson Complete
+                                          └── Reveal Answer → Show Excerpt → Show Key Evidence
+                                                └── Next Question
+                                                      └── Lesson Complete
 ```
 
 The **Teaching Session** should use a dedicated classroom canvas: no library cards, no editor tools, minimal top bar, visible progress, and optionally **Full Screen**.
@@ -421,7 +422,7 @@ Support a teacher-led verbal answer while keeping all hints concealed.
 Desktop stacked layout: the page shows only the active question; the excerpt is intentionally absent:
 
 - Top: the selected student's name, the question, and all visible answer options.
-- No excerpt panel, no placeholder, and no empty card before reveal; the reading text appears only after **Reveal Answer**.
+- No excerpt panel, no placeholder, and no empty card yet; the reading text appears only after **Show Excerpt**.
 - Bottom of the viewport: one large primary button **Reveal Answer**, in a bar pinned to the viewport edge so it never scrolls away.
 
 ```text
@@ -431,7 +432,7 @@ Desktop stacked layout: the page shows only the active question; the excerpt is 
 │ Why did Anna stay at home?                                       │
 │ ○ She felt tired.   ○ It was raining heavily.   ○ She forgot…    │
 │                                                                  │
-│ [no excerpt before reveal]                                       │
+│ [no excerpt yet]                                                 │
 ├──────────────────────────────────────────────────────────────────┤
 │                                             [   Reveal Answer  ] │
 └──────────────────────────────────────────────────────────────────┘
@@ -439,30 +440,46 @@ Desktop stacked layout: the page shows only the active question; the excerpt is 
 
 ### Rules
 
-- **No excerpt** should be visible before reveal, not even as unhighlighted text or an empty panel.
-- **No evidence styling** should be visible before reveal, even when annotations exist in the editor.
-- **No green correct-answer styling** before reveal.
+- **No excerpt** should be visible at this step, not even as unhighlighted text or an empty panel.
+- **No evidence styling** should be visible, even when annotations exist in the editor.
+- **No green correct-answer styling** before **Reveal Answer**.
 - Answer choices are presentation items, not student-submitted interactive votes.
 - Keep the selected student's name visible, but visually subordinate to the question.
 - Show only the current question; there is no full-reading view.
-- After reveal, the excerpt appears at the top of the same page (see `TCH-03`).
+- The excerpt appears at the top of the same page after **Show Excerpt** (see `TCH-03`).
 - All important controls must be reachable by mouse and keyboard.
 
 ---
 
-## 4.6 Screen `TCH-03`: Question, Answer Revealed
+## 4.6 Screen `TCH-03`: Staged Reveal
 
 ### Goal
 
-Make the reasoning behind the correct answer instantly visible on a projector.
+Let the teacher walk the class from the answer to its evidence one question at a time: what is correct, where it is stated, and which words prove it.
 
-### Changes from Before Reveal
+### Steps
 
-1. The **Reading Excerpt** panel appears at the top of the stage with the current question's excerpt.
-2. The question's **Key Evidence** words/phrases are shown with orange-gold emphasis and bold text inside the excerpt.
-3. Evidence associated with other questions stays hidden.
-4. The correct option receives a clear green-tinted background, check icon, and **Correct Answer** label.
-5. The primary CTA changes to **Next Question**, or **Finish Lesson** for the final question.
+The same question screen advances through three visible states. The correct option stays marked from the first state onward, and the selected student's name stays visible throughout.
+
+1. **Answer** — after **Reveal Answer**. The correct option receives a clear green-tinted background, check icon, and **Correct Answer** label. The excerpt stays hidden. The primary CTA reads **Show Excerpt**; there is no **Next Question** yet.
+
+2. **Excerpt** — after **Show Excerpt**. The **Reading Excerpt** panel appears at the top of the stage with the current question's excerpt as plain text and generous line spacing. No words are emphasized yet. The primary CTA reads **Show Key Evidence**. When the question has no Key Evidence, that button is absent and the CTA reads **Next Question**, or **Finish Lesson** on the last question.
+
+3. **Evidence** — after **Show Key Evidence**. Only the current question's **Key Evidence** words/phrases gain orange-gold emphasis and bold text inside the excerpt. Evidence associated with other questions stays hidden. The primary CTA reads **Next Question**, or **Finish Lesson** for the final question.
+
+```text
+Answer step                        Excerpt step                      Evidence step
+┌────────────────────────┐         ┌────────────────────────┐        ┌────────────────────────┐
+│ Emma Johnson           │         │ READING EXCERPT        │        │ READING EXCERPT        │
+│ Why did Anna stay?     │         │ Anna wanted to visit   │        │ Anna wanted to visit   │
+│ ✓ It was raining.      │         │ the park. However,     │        │ the park. However,     │
+│   She felt tired.      │         │ it was raining         │        │ it was [raining        │
+│                        │         │ heavily, so she...     │        │ heavily], so she...    │
+│ [no excerpt]           │         │ [plain text]           │        │ [Key Evidence bold]    │
+├────────────────────────┤         ├────────────────────────┤        ├────────────────────────┤
+│     [Show Excerpt]     │         │  [Show Key Evidence]   │        │    [Next Question]     │
+└────────────────────────┘         └────────────────────────┘        └────────────────────────┘
+```
 
 ### Visual hierarchy
 
@@ -474,7 +491,10 @@ No legend is needed for a single highlight level; the orange emphasis and green 
 
 ### Interaction
 
-- A single click on **Reveal Answer** makes the excerpt appear with the question's Key Evidence, alongside the correct answer.
+- **Reveal Answer** marks the correct option and nothing else.
+- **Show Excerpt** adds the plain excerpt; no highlights appear yet.
+- **Show Key Evidence** adds the current question's Key Evidence.
+- Rapid or repeated clicks cannot skip a step: the app accepts only the action that belongs to the current state.
 - Do not animate highlights in an elaborate or distracting way. A quick fade of around 150–250 ms is sufficient.
 - Click **Next Question** to hide the excerpt, correct-answer styling, and evidence, and return to the wheel for the next student.
 
@@ -514,7 +534,7 @@ A restrained celebratory color accent is appropriate; the screen should stay cal
 | `StudentWheel` | Random outcome, animated spin, selected result, current roster awareness. |
 | `SetupWheelPreview` | Decorative only, on Teaching Setup: continuously rotating, one segment per entered name, pauses on hover, no pointer, no selected name, updates while typing, static under reduced motion. |
 | `SelectedStudentActions` | **Keep**, **Remove**, **Spin Again**; explicit consequences. |
-| `TeachingQuestionPanel` | Read-only options before reveal, one highlighted correct option after reveal. |
+| `TeachingQuestionPanel` | Read-only options during the question; one highlighted correct option from the answer step onward. |
 | `TeachingProgress` | **Question X of Y** with minimal optional progress bar. |
 | `ConfirmDialog` | Only for destructive deletion, excerpt evidence invalidation, or leaving an active session. |
 | `Toast` | Small, brief saving/error feedback; non-blocking. |
@@ -651,6 +671,8 @@ Use these exact or closely equivalent English strings consistently. Do not intro
 | Empty roster | `No students left on the wheel` |
 | Restore roster | `Restore All Students` |
 | Reveal action | `Reveal Answer` |
+| Excerpt action | `Show Excerpt` |
+| Evidence action | `Show Key Evidence` |
 | Correct answer indicator | `Correct Answer` |
 | Next action | `Next Question` |
 | Final question CTA | `Finish Lesson` |
@@ -682,9 +704,11 @@ Produce these **nine distinct high-fidelity desktop screens/states** as a cohere
 4. `SET-01` — **Teaching Setup**, populated student names, live count, and the spinning wheel preview beside the field.
 5. `TCH-01A` — **Spin the Wheel**, before spinning.
 6. `TCH-01B` — **Selected Student**, with **Keep / Remove / Spin Again**.
-7. `TCH-02` — **Question Before Reveal**, showing the question and options only; no excerpt, answer, or evidence visible.
-8. `TCH-03` — **Answer Revealed**, excerpt with its Key Evidence, and the correct answer highlighted.
-9. `TCH-04` — **Lesson Complete**.
+7. `TCH-02` — **Question**, showing the question and options only; no excerpt, answer, or evidence visible.
+8. `TCH-03A` — **Answer Step**, correct option highlighted; excerpt still hidden.
+9. `TCH-03B` — **Excerpt Step**, the plain excerpt visible with no marks.
+10. `TCH-03C` — **Evidence Step**, excerpt with its Key Evidence, and the correct answer highlighted.
+11. `TCH-04` — **Lesson Complete**.
 
 ### Recommended sample lesson content
 
@@ -725,7 +749,7 @@ Produce these **nine distinct high-fidelity desktop screens/states** as a cohere
 
 **Key Evidence:** none
 
-When demonstrating Question 1, show only Question 1's excerpt and evidence. When demonstrating Question 2, show only Question 2's excerpt and evidence. Before revealing answers in a teaching mockup, hide the excerpt, the correct answer, and the evidence even though they have been configured.
+When demonstrating Question 1, show only Question 1's excerpt and evidence. When demonstrating Question 2, show only Question 2's excerpt and evidence. In a teaching mockup, hide the excerpt until the **Show Excerpt** step, the correct answer until **Reveal Answer**, and the evidence until **Show Key Evidence**, even though they have been configured.
 
 ---
 
@@ -738,7 +762,7 @@ For a coding agent or frontend team:
 3. Implement actual selectable text ranges against each question's saved excerpt; do not fake evidence by hardcoding an HTML `<mark>` in the lesson content.
 4. Keep the editor's excerpt input and annotated excerpt viewer grounded in the same saved text.
 5. Distinguish **Key Evidence** inside the excerpt with one highlight level; do not add a second evidence layer.
-6. Never show the excerpt or any configured evidence in a teaching question until reveal.
+6. Never show the excerpt before **Show Excerpt**, any configured evidence before **Show Key Evidence**, or the correct answer before **Reveal Answer**.
 7. Model wheel eligibility explicitly. Do not implement an automatic no-repeat policy: only explicit **Remove** changes the active roster.
 8. Use native accessible buttons, controls, and keyboard interactions wherever practical.
 9. Verify the UI with real multi-paragraph text, long student names, many answer options, and large rosters.
@@ -761,8 +785,8 @@ For a coding agent or frontend team:
 - [ ] Dynamic answer options and the correct-answer radio remain easy to scan.
 - [ ] The student wheel is fun, readable, and clearly identifies its selected student.
 - [ ] **Keep**, **Remove**, and **Spin Again** have unambiguous meaning and prominence.
-- [ ] No excerpt, evidence, or correct-answer colors appear before **Reveal Answer**.
-- [ ] After reveal, the excerpt appears with its Key Evidence, and the correct answer is visually distinct.
+- [ ] No excerpt appears before **Show Excerpt**, no correct-answer colors before **Reveal Answer**, and no evidence before **Show Key Evidence**.
+- [ ] Each reveal step adds only its own layer; the answer step and excerpt step do not leak evidence.
 - [ ] Every teaching stage has an obvious next action and a visible question-progress indicator.
 - [ ] Full-screen presentation works on a 16:9 projector without tiny text.
 - [ ] Keyboard navigation, focus states, contrast, and reduced-motion behavior are usable.

@@ -577,14 +577,16 @@
   function renderSession() {
     const s = session.state;
     el('teach-progress').textContent = 'Question ' + (s.questionIndex + 1) + ' of ' + s.questionCount;
+    const onQuestion = s.phase === 'question' || s.phase === 'answer'
+      || s.phase === 'excerpt' || s.phase === 'evidence';
     el('stage-spin').hidden = s.phase !== 'spin';
     el('stage-selected').hidden = s.phase !== 'selected';
-    el('stage-question').hidden = s.phase !== 'question' && s.phase !== 'revealed';
+    el('stage-question').hidden = !onQuestion;
     el('stage-done').hidden = s.phase !== 'completed';
 
     if (s.phase === 'spin') renderSpinStage();
     else if (s.phase === 'selected') el('sel-name').textContent = labelFor(s.selectedStudentId);
-    else if (s.phase === 'question' || s.phase === 'revealed') renderQuestionStage(s.phase === 'revealed');
+    else if (onQuestion) renderQuestionStage(s.phase);
     else if (s.phase === 'completed') {
       el('done-count').textContent = "You've finished all " + s.questionCount + ' questions.';
     }
@@ -703,13 +705,17 @@
     if (rotor) setTimeout(finish, 3050); else finish();
   }
 
-  function renderQuestionStage(revealed) {
+  function renderQuestionStage(phase) {
     const s = session.state;
     const q = session.reading.questions[s.questionIndex];
+    const answered = phase === 'answer' || phase === 'excerpt' || phase === 'evidence';
+    const excerptVisible = phase === 'excerpt' || phase === 'evidence';
+    const evidenceVisible = phase === 'evidence';
+    const hasEvidence = (q.keyEvidence || []).length > 0;
     el('teach-student').textContent = labelFor(s.selectedStudentId) + ' is answering';
-    el('teach-excerpt-panel').hidden = !revealed;
-    renderPassage(el('teach-passage'), revealed ? (q.passage || '') : '',
-      revealed ? q.keyEvidence : []);
+    el('teach-excerpt-panel').hidden = !excerptVisible;
+    renderPassage(el('teach-passage'), excerptVisible ? (q.passage || '') : '',
+      evidenceVisible ? q.keyEvidence : []);
 
     const box = el('teach-question');
     box.textContent = '';
@@ -721,7 +727,7 @@
     (q.options || []).forEach(function (o) {
       const li = document.createElement('li');
       li.textContent = o.text || '';
-      if (revealed && o.id === q.correctOptionId) {
+      if (answered && o.id === q.correctOptionId) {
         li.classList.add('correct');
         const label = document.createElement('span');
         label.className = 'correct-label';
@@ -732,8 +738,10 @@
     });
     box.append(prompt, ul);
 
-    el('btn-reveal').hidden = revealed;
-    el('btn-next').hidden = !revealed;
+    el('btn-reveal').hidden = (phase === 'excerpt' && !hasEvidence) || phase === 'evidence';
+    el('btn-reveal').textContent = phase === 'question' ? 'Reveal Answer'
+      : phase === 'answer' ? 'Show Excerpt' : 'Show Key Evidence';
+    el('btn-next').hidden = !((phase === 'excerpt' && !hasEvidence) || phase === 'evidence');
     el('btn-next').textContent = s.questionIndex >= s.questionCount - 1 ? 'Finish Lesson' : 'Next Question';
   }
 
@@ -815,7 +823,12 @@
     el('btn-keep').addEventListener('click', function () { applyAction({ type: 'KEEP' }); });
     el('btn-remove').addEventListener('click', function () { applyAction({ type: 'REMOVE' }); });
     el('btn-restore').addEventListener('click', function () { applyAction({ type: 'RESTORE' }); });
-    el('btn-reveal').addEventListener('click', function () { applyAction({ type: 'REVEAL' }); });
+    el('btn-reveal').addEventListener('click', function () {
+      const phase = session.state.phase;
+      if (phase === 'question') applyAction({ type: 'REVEAL_ANSWER' });
+      else if (phase === 'answer') applyAction({ type: 'SHOW_EXCERPT' });
+      else if (phase === 'excerpt') applyAction({ type: 'SHOW_EVIDENCE' });
+    });
     el('btn-next').addEventListener('click', function () { applyAction({ type: 'NEXT' }); });
     el('btn-teach-again').addEventListener('click', teachAgain);
     el('btn-back-library').addEventListener('click', exitTeaching);
