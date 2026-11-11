@@ -707,7 +707,8 @@
     const s = session.state;
     const q = session.reading.questions[s.questionIndex];
     el('teach-student').textContent = labelFor(s.selectedStudentId) + ' is answering';
-    renderPassage(el('teach-passage'), q.passage || '',
+    el('teach-excerpt-panel').hidden = !revealed;
+    renderPassage(el('teach-passage'), revealed ? (q.passage || '') : '',
       revealed ? q.keyEvidence : []);
 
     const box = el('teach-question');

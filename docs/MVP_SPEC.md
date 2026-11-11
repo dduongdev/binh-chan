@@ -1,13 +1,13 @@
 # ReadingFlow — MVP Product & Functional Specification
 
-**Version:** 2.2  
+**Version:** 2.3  
 **Status:** Approved scope for MVP implementation  
-**Last updated:** November 10, 2026  
+**Last updated:** November 11, 2026  
 **Audience:** Product designer, frontend/backend developers, and AI coding agents  
 **UI language:** English only  
 **Companion document:** [`UI_SPEC.md`](./UI_SPEC.md)
 
-> This version supersedes the previous MVP specification. There is **no whole-reading passage**: a lesson is a title plus questions, and **each question owns one plain-text excerpt** copied from the book. Evidence has **one visual level per question** (Key Evidence) selected inside that excerpt; the Supporting Passage concept is removed. The wheel keeps its **explicit Keep / Remove decision after every selection** instead of automatic no-repeat rounds. Browser data saved under the old `v1` storage key is ignored, not migrated or deleted.
+> This version supersedes the previous MVP specification. There is **no whole-reading passage**: a lesson is a title plus questions, and **each question owns one plain-text excerpt** copied from the book. Evidence has **one visual level per question** (Key Evidence) selected inside that excerpt; the Supporting Passage concept is removed. During teaching, the question and answer options stay visible while the **excerpt stays hidden until Reveal Answer**. The wheel keeps its **explicit Keep / Remove decision after every selection** instead of automatic no-repeat rounds. Browser data saved under the old `v1` storage key is ignored, not migrated or deleted.
 
 ---
 
@@ -31,7 +31,7 @@ The teacher operates the app on one computer, typically connected to a classroom
 - **Prepare once, teach repeatedly.** Reading content and question annotations are stored separately from session-specific student names.
 - **Annotate the excerpt itself, not a separate evidence field.** Teachers never copy evidence into another field or enter character positions.
 - **One level of evidence, one simple workflow.** Each question marks key phrases inside its own excerpt; there is no second, softer level.
-- **Evidence belongs to the question.** Moving to another question changes the visible excerpt and annotations; annotations do not leak between questions.
+- **Evidence belongs to the question.** Moving to another question changes the excerpt and annotations in the editor; annotations do not leak between questions.
 - **Teacher-controlled reveal.** No answer correctness or evidence is visible before the teacher clicks **Reveal Answer**.
 - **Teacher-controlled wheel roster.** Spinning never automatically removes a student. Only **Remove** excludes the selected student from future spins; **Keep** leaves them eligible.
 - **One clear action at a time.** The product should be simple enough to use without onboarding.
@@ -110,8 +110,8 @@ My Readings
        └─ Question 1
             ├─ Spin the wheel
             ├─ Selected student → Keep / Remove (or Spin Again)
-            ├─ Display the question's excerpt + question + options (answer hidden)
-            ├─ Reveal Answer (correct option + Key Evidence)
+            ├─ Display the question + options (excerpt and answer hidden)
+            ├─ Reveal Answer (excerpt + correct option + Key Evidence)
             └─ Next Question → repeat
                  └─ Lesson Complete → Teach Again / My Readings
 ```
@@ -157,7 +157,7 @@ My Readings
 | `QST-04` | Maintain the configured order of questions during teaching. |
 | `QST-05` | Removing the correct option clears the correct-option selection and requires choosing another. |
 | `QST-06` | Require at least two non-empty options for a question to be teachable. |
-| `QST-07` | Each question has one excerpt, shown during teaching in place of any whole-reading text. |
+| `QST-07` | Each question has one excerpt, shown during teaching only after Reveal Answer in place of any whole-reading text. |
 
 ### 4.4 Question-specific evidence (`EVD`)
 
@@ -231,9 +231,9 @@ The phrase *raining heavily* has a stronger highlight and font weight; the rest 
 | --- | --- |
 | `TCH-01` | Progress through questions in the configured order, showing **Question X of Y**. |
 | `TCH-02` | The student-selection wheel precedes each question's answering stage. |
-| `TCH-03` | After **Keep** or **Remove**, show the selected student, the current question's excerpt, the question, and all answer options. |
-| `TCH-04` | Before reveal, show **no correct-answer styling** and **no evidence highlights**. |
-| `TCH-05` | **Reveal Answer** identifies the correct option clearly and applies the question's Key Evidence emphasis. |
+| `TCH-03` | After **Keep** or **Remove**, show the selected student, the question, and all answer options; keep the excerpt hidden. |
+| `TCH-04` | Before reveal, show **no excerpt**, **no correct-answer styling**, and **no evidence highlights**. |
+| `TCH-05` | **Reveal Answer** shows the current question's excerpt, identifies the correct option clearly, and applies the question's Key Evidence emphasis. |
 | `TCH-06` | Reveal annotations only from the current question, even if the same text was annotated for another question. |
 | `TCH-07` | **Next Question** advances by exactly one question and returns to the wheel with hidden-answer state restored. |
 | `TCH-08` | After the final question, show **Lesson Complete** with **Teach Again** and **Back to My Readings**. |
@@ -316,9 +316,9 @@ Offsets refer to the **same canonical, unformatted `Question.passage` string**. 
 
 Rendering order:
 
-1. Render the question's excerpt.
-2. When evidence is visible, render Key Evidence spans with stronger contrast and font weight.
-3. When evidence is not visible, render the excerpt normally.
+1. In the editor, render the question's excerpt.
+2. In teaching, render nothing until reveal; the teaching excerpt panel is hidden.
+3. After reveal, render the excerpt and its Key Evidence spans with stronger contrast and font weight.
 
 Store plain text and safe ranges; do not save raw HTML from a rich-text selection.
 
@@ -398,7 +398,7 @@ A session uses a snapshot of the reading's title and question configuration, inc
 | `selected` | Spin Again | `selected` after animation | None | Hidden |
 | `selected` | Keep | `question` | Selected student stays active | Hidden |
 | `selected` | Remove | `question` | Selected student becomes inactive | Hidden |
-| `question` | Reveal Answer | `revealed` | None | Correct option + this question's Key Evidence shown |
+| `question` | Reveal Answer | `revealed` | None | Excerpt + correct option + this question's Key Evidence shown |
 | `revealed` | Next Question (not final) | `spin` | Preserve roster | Hidden |
 | `revealed` | Finish Lesson (final question) | `completed` | No change | Complete |
 | `completed` | Teach Again | Setup or new `spin` session | Restore initial roster after re-confirming setup | Hidden |
@@ -427,10 +427,10 @@ If zero students are active when entering `spin`, show the empty-roster state; *
 2. Click **Start Session**; the wheel for **Question 1 of N** appears.
 3. Click **Spin**; the wheel selects **Emma Johnson**.
 4. Choose **Keep** (Emma remains eligible) or **Remove** (Emma is excluded from subsequent spins). Optionally choose **Spin Again** before deciding.
-5. Show the selected student, the question's excerpt, the question, and answer choices. No answer or evidence is visibly marked.
+5. Show the selected student, the question, and answer choices; keep the excerpt hidden. No answer or evidence is visibly marked.
 6. The student responds verbally. Click **Reveal Answer**.
-7. The correct option turns green and the question's Key Evidence becomes stronger/bolder.
-8. Click **Next Question**. The answer and evidence reset to hidden, the next question's excerpt replaces the previous one, and the wheel is ready for another student.
+7. The excerpt appears with the question's Key Evidence stronger/bolder, and the correct option turns green.
+8. Click **Next Question**. The excerpt, answer, and evidence reset to hidden, and the wheel is ready for another student.
 9. After the last question, display **Lesson Complete**.
 
 ### Scenario C — All students removed
@@ -453,7 +453,7 @@ If zero students are active when entering `spin`, show the empty-roster state; *
 | Performance | Smooth interactions on a normal classroom laptop. Avoid heavy media and large UI libraries solely for decoration. |
 | Data safety | No silent loss of saved lessons or annotations. Warn before deleting lessons or clearing evidence. |
 | Privacy | Student names are used for the current class session; avoid needless analytics, tracking, or account collection. |
-| Reliability | The wheel never selects a removed student; the correct option and evidence never reveal early. |
+| Reliability | The wheel never selects a removed student; the excerpt, correct option, and evidence never reveal early. |
 | Portability | Browser-based; technology/framework choice is outside this product specification. |
 
 UI-specific sizing, colors, layout, responsive behavior, and reference-inspired visual style are defined in [`UI_SPEC.md`](./UI_SPEC.md).
@@ -480,9 +480,9 @@ The following are required for MVP sign-off:
 | `AC-12` | Spin and select **Remove**. | Student is absent from all subsequent wheel selections in that session. |
 | `AC-13` | Select **Spin Again** before Keep/Remove. | A new valid result is shown; roster is unchanged by the discarded result. |
 | `AC-14` | Remove all students and advance to another wheel stage. | No broken/empty spin; Restore All Students is available. |
-| `AC-15` | Display a question before clicking Reveal Answer. | Correct option and Key Evidence are both hidden. |
-| `AC-16` | Click Reveal Answer. | Exactly one correct option is identified; only the current question's Key Evidence appears. |
-| `AC-17` | Click Next Question. | Progress increments by one; wheel returns; answer/evidence are hidden. |
+| `AC-15` | Display a question before clicking Reveal Answer. | The excerpt, correct option, and Key Evidence are all hidden. |
+| `AC-16` | Click Reveal Answer. | The excerpt appears with only the current question's Key Evidence; exactly one correct option is identified. |
+| `AC-17` | Click Next Question. | Progress increments by one; wheel returns; excerpt, answer, and evidence are hidden. |
 | `AC-18` | Complete the final question. | Lesson Complete offers Teach Again and Back to My Readings. |
 | `AC-19` | Switch to full screen on a projector. | Question, excerpt, choices, wheel, and teacher actions remain readable. |
 | `AC-20` | Inspect all UI strings. | No Vietnamese or mixed-language UI text is present. |
